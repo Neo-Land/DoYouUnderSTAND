@@ -72,8 +72,8 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 ## Roadmap
 ### Part 1 — JoJo poses
 1. [x] Record 6 poses + none, 3 sessions each (data/videos)
-2. [ ] Raise accuracy: baseline 81.1% / macro-F1 0.822 (2026-11-04). Weak spot: Kira → Bucciarati,
-       caused by missed hands in full-body shots
+2. [ ] Raise accuracy: 81.1% → 91.2% / macro-F1 0.927 with the wrist-crop hand fallback
+       (2026-11-04). Weak spot now: `none` → Bucciarati (131 frames, mostly none_s2)
 3. [ ] Polish effects (Stand fade-in, positioning per pose)
 
 ### Part 2 — ASL

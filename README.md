@@ -27,6 +27,18 @@ Design choices worth knowing:
 - **Leave-one-session-out evaluation.** Neighbouring frames are near-duplicates, so a random split inflates accuracy. Each recording session is held out in turn.
 - **Mirror augmentation.** Every training frame is also flipped left/right, so it works whether or not the camera mirrors the image.
 - **Hands matched to wrists**, not to MediaPipe's left/right label, which flips with mirroring.
+- **Wrist-crop fallback for missed hands.** In full-body shots a hand is only a few dozen pixels wide, so the full-frame hand detector often misses it. For any wrist the pose model found but no hand was matched to, the app crops a square around that hand, enlarges it to 256 px and runs a second hand detector on it. A detected hand is rejected if its wrist is far from the pose wrist.
+
+## Results
+
+7 classes (6 poses + `none`), 2,735 frames from 21 clips, one person, 3 recording sessions. Scores are leave-one-session-out: each session is held out in turn and predicted by a model trained on the other two.
+
+| Version | Accuracy | Macro-F1 | Kira recall | Kira → Bucciarati | none → Bucciarati |
+| --- | --- | --- | --- | --- | --- |
+| Baseline | 81.1% | 0.822 | 0.49 | 167 frames | 137 frames |
+| + wrist-crop hand fallback | **91.2%** | **0.927** | 0.98 | 7 frames | 131 frames |
+
+Both rows use logistic regression, which beat the random forest each time. Hands found in Kira and Bucciarati clips went from as low as 0–50% per clip to 99–100%. Diego, Jotaro and Josuke are at F1 1.00. The weakest class is now `none` (recall 0.74): normal movement still gets read as Bucciarati, mostly in one session. Experiment notes: [docs/DEVLOG.md](docs/DEVLOG.md).
 
 ## Setup (Windows, Python 3.11)
 
@@ -59,7 +71,7 @@ none_s1.mp4    none_s2.mp4    none_s3.mp4     <- normal movement, so Stands don'
 python scripts/extract_landmarks.py
 ```
 
-Writes `data/landmarks.csv` and prints how many frames each clip contributed. A clip flagged "check framing" had too many frames where no body was found.
+Writes `data/landmarks.csv` and prints how many frames each clip contributed and in what share of them each hand was found (`hands L __% R __%`). A clip flagged "check framing" had too many frames where no body was found.
 
 ## 3. Train
 

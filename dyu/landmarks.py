@@ -68,9 +68,47 @@ class Detector:
             running_mode=vision.RunningMode.VIDEO,
             num_hands=num_hands,
         )
+        # Second hand model for zoomed-in wrist crops. In full-body shots hands are only a few
+        # dozen pixels wide and the full-frame detector often misses them; enlarging the area
+        # around a wrist the pose model already found recovers most of those misses.
+        crop_opts = vision.HandLandmarkerOptions(
+            base_options=mp_python.BaseOptions(model_asset_path=str(paths["hand"])),
+            running_mode=vision.RunningMode.IMAGE,
+            num_hands=1,
+            min_hand_detection_confidence=0.3,
+            min_hand_presence_confidence=0.3,
+        )
         self.pose = vision.PoseLandmarker.create_from_options(pose_opts)
         self.hands = vision.HandLandmarker.create_from_options(hand_opts)
+        self.hand_crop = vision.HandLandmarker.create_from_options(crop_opts)
         self._last_ts = -1
+        self.crop_recoveries = 0  # how many hands the crop pass found (for stats)
+
+    CROP_SIZE = 256  # pixels the wrist crop is enlarged to
+
+    def _detect_hand_in_crop(self, rgb, wrist, index, torso_px):
+        """Look for one hand around a wrist. Returns (21, 2) pixel coords in the full frame, or None."""
+        H, W = rgb.shape[:2]
+        center = index  # the pose "index" point sits at the knuckles, roughly mid-hand
+        side = max(48.0, 0.9 * torso_px)
+        x0, y0 = int(max(0, center[0] - side / 2)), int(max(0, center[1] - side / 2))
+        x1, y1 = int(min(W, center[0] + side / 2)), int(min(H, center[1] + side / 2))
+        cw, ch = x1 - x0, y1 - y0
+        if cw < 16 or ch < 16:
+            return None
+        crop = rgb[y0:y1, x0:x1]
+        scale = self.CROP_SIZE / max(cw, ch)
+        if scale > 1:
+            crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        res = self.hand_crop.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(crop)))
+        if not res.hand_landmarks:
+            return None
+        pts = np.array([[x0 + lm.x * cw, y0 + lm.y * ch] for lm in res.hand_landmarks[0]], dtype=np.float32)
+        if pts.shape != (N_HAND, 2):
+            return None
+        if np.linalg.norm(pts[0] - wrist) > 0.5 * torso_px:  # found some other hand; reject
+            return None
+        return pts
 
     def process(self, frame_bgr, timestamp_ms):
         """Run both models on one BGR frame. Timestamps must increase (VIDEO mode)."""
@@ -106,11 +144,28 @@ class Detector:
                 out.pose = pose
                 out.pose_px = np.array([[lm.x * w, lm.y * h] for lm in lms], dtype=np.float32)
                 out.left_hand, out.right_hand = assign_hands(pose[:, :2], hands_hu)
+                self._recover_missing_hands(rgb, out)
         return out
+
+    def _recover_missing_hands(self, rgb, out):
+        """Second pass: for each wrist with no hand assigned, search a zoomed crop around it."""
+        px, h = out.pose_px, rgb.shape[0]
+        torso = float(np.linalg.norm((px[11] + px[12]) / 2 - (px[23] + px[24]) / 2))
+        if torso < 10:
+            return
+        for side, wrist_i, index_i in (("left_hand", 15, 19), ("right_hand", 16, 20)):
+            if getattr(out, side) is not None or out.pose[wrist_i, 2] < 0.3:
+                continue
+            hand_px = self._detect_hand_in_crop(rgb, px[wrist_i], px[index_i], torso)
+            if hand_px is not None:
+                setattr(out, side, hand_px / h)  # pixels -> frame-height units
+                out.hands_px.append(hand_px)
+                self.crop_recoveries += 1
 
     def close(self):
         self.pose.close()
         self.hands.close()
+        self.hand_crop.close()
 
     def __enter__(self):
         return self

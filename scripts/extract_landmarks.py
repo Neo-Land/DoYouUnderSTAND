@@ -79,7 +79,12 @@ def main():
             print(f"- warning: '{label}' isn't in config.yaml stands (still extracting it)")
         rows, no_pose = extract_video(path, label, session, ex["stride"], ex["trim_fraction"], ex["max_height"])
         flag = "  <- check framing!" if rows and no_pose > len(rows) * 0.2 else ""
-        print(f"- {path.name:28s} {label:12s} {session}  kept {len(rows):4d} frames, no body found in {no_pose}{flag}")
+        lh_i = len(META_COLUMNS) + RAW_COLUMNS.index("lh_present")
+        rh_i = len(META_COLUMNS) + RAW_COLUMNS.index("rh_present")
+        lh = sum(r[lh_i] for r in rows) / max(1, len(rows))
+        rh = sum(r[rh_i] for r in rows) / max(1, len(rows))
+        print(f"- {path.name:28s} {label:12s} {session}  kept {len(rows):4d} frames, no body in {no_pose:3d}, "
+              f"hands L {lh:4.0%} R {rh:4.0%}{flag}")
         all_rows += rows
 
     if not all_rows:
