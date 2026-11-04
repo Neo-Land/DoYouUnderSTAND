@@ -34,6 +34,24 @@ MIRROR_CAMERA = True          # selfie view; keep the same in record.py and app.
 
 MODES = ("pose", "asl")
 
+# ASL Citizen word signs (Microsoft Research License: non-commercial research only, see CLAUDE.md).
+ASL_CITIZEN_DIR = DATASETS_DIR / "asl_citizen"
+ASL_CITIZEN_ZIP = ASL_CITIZEN_DIR / "ASL_Citizen.zip"
+# 100 everyday signs. Exact dataset glosses: a trailing digit picks one of several signs for the
+# same English word (we took the variant with the most videos).
+ASL_WORD_SIGNS = [
+    "HELLO", "BYE", "THANKYOU", "PLEASE", "SORRY", "YES", "NO", "HELP", "WANT1", "NEED",
+    "LIKE", "LOVE", "GOOD", "BAD", "HAPPY", "SAD", "ANGRY", "TIRED", "HUNGRY", "EAT1",
+    "DRINK1", "WATER", "MORE", "FINISH", "STOP", "GO", "COME", "WAIT", "WORK", "SCHOOL",
+    "HOME", "FAMILY", "MOTHER", "FATHER", "FRIEND", "NAME", "WHAT1", "WHO", "WHERE", "WHEN",
+    "WHY", "HOW1", "UNDERSTAND", "KNOW", "THINK", "LEARN", "SIGN", "DEAF1", "HEARING", "TEACHER",
+    "STUDENT", "BOOK", "COMPUTER", "PHONE", "TIME", "DAY", "NIGHT1", "TODAY", "TOMORROW", "YESTERDAY",
+    "MORNING", "NOW", "LATER", "AGAIN", "DIFFERENT", "NICE", "MEET", "FINE1", "OK", "BATHROOM",
+    "HOT", "COLD", "RED", "BLUE", "GREEN", "DOG1", "BIRD", "APPLE", "MILK2", "COFFEE",
+    "CAR", "BUS", "MONEY2", "BUY", "PLAY", "MUSIC", "MOVIE1", "DANCE", "SLEEP", "SICK",
+    "HURT", "DOCTOR2", "READY", "NOT", "WORKOUT", "FIGHT", "STAND1", "POWER", "STRONG", "WIN",
+]
+
 
 def data_path(mode: str) -> Path:
     return DATA_DIR / f"{mode}.csv"

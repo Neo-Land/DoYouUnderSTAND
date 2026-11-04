@@ -31,6 +31,8 @@ part most relevant to the role, so it should end up solid, not a token feature.
 - `src/app.py`        — live demo (`--mode pose` or `--mode asl`)
 - `src/download_asl.py` — downloads Kaggle ASL Alphabet (grassknoted/asl-alphabet) → `datasets/`
 - `src/import_asl.py` — dataset images → hand landmarks → `data/asl.csv`
+- `src/extract_asl_citizen.py` — pulls only `config.ASL_WORD_SIGNS` videos out of the ASL Citizen zip
+  → `datasets/asl_citizen/ASL_Citizen/videos/` + `subset.csv` (re-run after changing the sign list)
 - `scripts/train_asl.ps1` — runs download → import → train in one go, logs to `logs/train_asl.log`
 - `assets/stands/`    — Stand PNGs (transparent background), user-supplied, not committed
 - `assets/sounds/`    — sound effects, user-supplied, not committed
