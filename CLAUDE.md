@@ -16,50 +16,49 @@ part most relevant to the role, so it should end up solid, not a token feature.
   recorded as videos on a MacBook and processed on the desktop with `record.py --video`.
 
 ## Stack
-- Python 3.11, MediaPipe 0.10.14 (legacy `mp.solutions` API: pose, hands, selfie_segmentation)
-- OpenCV for capture/display, Pillow for text rendering, pygame for sound
-- scikit-learn RandomForest on normalized landmark features, saved with joblib
-- Versions are pinned in requirements.txt (mediapipe 0.10.14 needs numpy < 2). Don't bump
-  mediapipe without checking that `mp.solutions` still exists in the new version.
+- Python 3.11, MediaPipe Tasks API (Pose Landmarker + Hand Landmarker, 0.10.35 in .venv).
+  Model `.task` files download into `models/` on first run.
+- OpenCV, Pillow, pygame; pandas + scikit-learn (logistic regression vs random forest, best
+  held-out score wins); PyYAML config; pytest (CI runs it via `.github/workflows/tests.yml`).
+- `asl/` is the OLD scaffold (legacy `mp.solutions`, MediaPipe 0.10.14 + numpy<2). It does not
+  run in the current .venv; port it to the Tasks API / `dyu` before using it. Exception:
+  `asl/extract_asl_citizen.py` needs no MediaPipe and works.
 
 ## Layout
-- `src/config.py`     — paths, the six poses and their Stand assets, thresholds
-- `src/landmarks.py`  — MediaPipe wrapper + feature extraction/normalization (pose & hands)
-- `src/record.py`     — capture labeled samples from webcam or a video file → `data/<mode>.csv`
-- `src/train.py`      — train a classifier → `models/<mode>.joblib`
-- `src/effects.py`    — Stand compositing, menacing text, sound
-- `src/app.py`        — live demo (`--mode pose` or `--mode asl`)
-- `src/download_asl.py` — downloads Kaggle ASL Alphabet (grassknoted/asl-alphabet) → `datasets/`
-- `src/import_asl.py` — dataset images → hand landmarks → `data/asl.csv`
-- `src/extract_asl_citizen.py` — pulls only `config.ASL_WORD_SIGNS` videos out of the ASL Citizen zip
-  → `datasets/asl_citizen/ASL_Citizen/videos/` + `subset.csv` (re-run after changing the sign list)
-- `scripts/train_asl.ps1` — runs download → import → train in one go, logs to `logs/train_asl.log`
-- `assets/stands/`    — Stand PNGs (transparent background), user-supplied, not committed
-- `assets/sounds/`    — sound effects, user-supplied, not committed
-- `data/`, `models/`  — generated; not committed
+- `config.yaml`       — camera, extraction, recognition, effects settings, the six Stands
+- `dyu/landmarks.py`  — MediaPipe Tasks wrapper (`Detector`): body + hands per frame, person mask
+- `dyu/features.py`   — raw row layout, featurize (hips/torso normalization, hands per wrist), flip
+- `dyu/clips.py`, `dyu/smoothing.py`, `dyu/effects.py`, `dyu/config.py`
+- `scripts/extract_landmarks.py` — `data/videos/<pose>_s<session>.*` → `data/landmarks.csv`
+- `scripts/train.py`  — leave-one-session-out eval → `models/pose_classifier.joblib`, `reports/`
+- `app.py`            — live demo (webcam or `--video`)
+- `tests/`            — pytest unit tests for features/clips/smoothing
+- `reports/`          — committed metrics.json + confusion matrix from the latest training run
+- `docs/DEVLOG.md`    — dated log of experiments and before/after numbers
+- `asl/`              — legacy ASL fingerspelling code + ASL Citizen subset extraction (see Stack)
+- `scripts/train_asl.ps1` — legacy fingerspelling pipeline (runs asl/; needs porting)
+- `assets/stands/`, `assets/sounds/` — user-supplied, gitignored
+- `data/`, `models/`, `datasets/` — generated or downloaded; gitignored
 
 ## Poses (label → Stand)
 jotaro → Star Platinum · giorno → Gold Experience · josuke → Crazy Diamond ·
 bucciarati → Sticky Fingers · diego → Scary Monsters · kira → Killer Queen ·
-plus `neutral` (standing normally / not posing) — always record this class.
+plus `none` (normal movement, not posing). Clips are named `<pose>_s<session>`, 3 sessions each.
 
 ## Commands (run from the repo root, venv active)
 - Setup (Windows): `./setup.ps1`  (Mac/Linux: `./setup.sh`)
-- Record: `python src/record.py --label jotaro` (SPACE toggles capture, Q quits)
-- Record from video: `python src/record.py --label jotaro --video clips/jotaro.mov`
-- Train: `python src/train.py --mode pose`
-- Run: `python src/app.py --mode pose`
-- ASL: same commands with `--mode asl` and letter labels (e.g. `--label A`)
-- ASL from the Kaggle dataset (unattended): `powershell -ExecutionPolicy Bypass -File scripts/train_asl.ps1`
-  Needs `%USERPROFILE%\.kaggle\kaggle.json`. Takes roughly 20–40 min on CPU. Check the log for
-  per-letter accuracy; low letters (M/N/S/T etc.) are expected to be confused.
+- Extract: `python scripts/extract_landmarks.py`  (prints per-clip frames and hand rates)
+- Train: `python scripts/train.py`
+- Run: `python app.py` or `python app.py --video data/videos/jotaro_s1.mp4 --debug`
+- Tests: `python -m pytest -q`
 
 ## Conventions
-- Frames from the webcam are mirrored (selfie view) before processing, in both record and app.
-  Keep that consistent or the classifier sees left/right swapped.
-- Feature vectors must stay identical between record.py and app.py — always go through
-  `landmarks.Extractor`. If the feature layout changes, old CSVs/models are invalid: re-record.
-- Don't commit copyrighted images or audio (assets are gitignored).
+- Evaluation is leave-one-session-out; never report random-frame splits (near-duplicate frames).
+- Hands are assigned by distance to the pose wrists, not MediaPipe's handedness label.
+  Training adds left/right flipped copies, so the camera mirror setting doesn't matter.
+- If the feature layout in `dyu/features.py` changes, re-run extraction; old CSVs/models are invalid.
+- Log every experiment in `docs/DEVLOG.md` and keep the README results section current.
+- Don't commit videos, `data/*.csv`, `models/`, or Stand art/sounds (all gitignored).
 
 ## ASL Citizen license rules (Microsoft Research License — must follow)
 Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research use only.
@@ -72,8 +71,9 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 
 ## Roadmap
 ### Part 1 — JoJo poses
-1. [ ] Record 6 poses + neutral (~200+ samples each, a few angles/distances)
-2. [ ] Train, check per-class accuracy, tune STABLE_FRAMES / threshold
+1. [x] Record 6 poses + none, 3 sessions each (data/videos)
+2. [ ] Raise accuracy: baseline 81.1% / macro-F1 0.822 (2026-11-04). Weak spot: Kira → Bucciarati,
+       caused by missed hands in full-body shots
 3. [ ] Polish effects (Stand fade-in, positioning per pose)
 
 ### Part 2 — ASL

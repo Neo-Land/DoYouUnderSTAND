@@ -1,3 +1,5 @@
+# LEGACY: needs mediapipe 0.10.14 (mp.solutions). The repo .venv runs 0.10.35 for dyu/, so this
+# script will not run there until asl/ is ported to the Tasks API.
 # One-shot ASL pipeline: download dataset -> extract hand landmarks -> train model.
 # Safe to re-run: skips the download if the dataset is already there.
 # Writes a log to logs/train_asl.log
@@ -16,7 +18,7 @@ function Step($name, [string[]]$pyArgs) {
     if ($LASTEXITCODE -ne 0) { Write-Host "FAILED at: $name (see $log)"; exit 1 }
 }
 
-Step "download" @("src\download_asl.py")
-Step "extract landmarks" @("src\import_asl.py", "--fresh", "--per-class", "1500")
-Step "train" @("src\train.py", "--mode", "asl")
+Step "download" @("asl\download_asl.py")
+Step "extract landmarks" @("asl\import_asl.py", "--fresh", "--per-class", "1500")
+Step "train" @("asl\train.py", "--mode", "asl")
 Write-Host "ASL pipeline finished. Model: models\asl.joblib  Log: logs\train_asl.log"

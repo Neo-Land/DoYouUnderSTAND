@@ -1,5 +1,4 @@
 # Sound effects (optional)
 
-One `.wav` or `.ogg` per Stand, named to match the image (e.g. `star_platinum.wav`).
-Plus `menacing.wav`, which plays for any Stand that has no sound of its own.
-Missing files are skipped. Gitignored.
+One file per pose, named like the image (e.g. `jotaro.wav`), plus `menacing.wav`, which plays for
+any Stand without its own sound. Paths are set in `config.yaml`. Missing files play silence. Gitignored.

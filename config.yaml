@@ -1,0 +1,76 @@
+# Do You UnderSTAND: configuration
+# Paths are relative to the project folder.
+
+camera:
+  index: 0            # try 1 or 2 if the wrong camera opens
+  width: 1280
+  height: 720
+  mirror: true        # show yourself like a mirror
+
+extraction:
+  videos_dir: data/videos
+  output_csv: data/landmarks.csv
+  stride: 2           # use every 2nd frame (neighbouring frames are near-duplicates)
+  trim_fraction: 0.15 # skip the first/last 15% of each clip (stepping into/out of the pose)
+  max_height: 720     # downscale bigger videos for speed
+
+training:
+  model_path: models/pose_classifier.joblib
+  reports_dir: reports
+
+recognition:
+  threshold: 0.6      # minimum confidence for a frame to count
+  window: 10          # frames in the voting window
+  min_votes: 7        # frames out of the window needed to summon a Stand
+  linger_seconds: 1.5 # how long a Stand stays after you drop the pose
+
+effects:
+  fade_seconds: 0.35
+  stand_scale: 2.4    # Stand height, in torso lengths
+  stand_offset_x: 0.7 # sideways shift, in torso lengths (+ = screen right)
+  stand_offset_y: -0.15
+  menacing_text: true
+  menacing_char: "ゴ"
+  sound: true
+  volume: 0.8
+  default_sound: assets/sounds/menacing.wav   # played when a Stand has no sound of its own
+
+# One entry per pose. The key must match the clip names (jotaro_s1.mp4 -> jotaro).
+# Optional per-Stand overrides: scale, offset_x, offset_y
+stands:
+  jotaro:
+    pose: "The Direct Point"
+    user: "Jotaro Kujo"
+    stand: "Star Platinum"
+    image: assets/stands/jotaro.png
+    sound: assets/sounds/jotaro.wav
+  giorno:
+    pose: "The High-Fashion Collar Grab"
+    user: "Giorno Giovanna"
+    stand: "Gold Experience"
+    image: assets/stands/giorno.png
+    sound: assets/sounds/giorno.wav
+  josuke:
+    pose: "The S-Curve Backbend"
+    user: "Josuke Higashikata"
+    stand: "Crazy Diamond"
+    image: assets/stands/josuke.png
+    sound: assets/sounds/josuke.wav
+  bucciarati:
+    pose: "The Floating Wrist-Cross"
+    user: "Bruno Bucciarati"
+    stand: "Sticky Fingers"
+    image: assets/stands/bucciarati.png
+    sound: assets/sounds/bucciarati.wav
+  diego:
+    pose: "The Bestial Low Crouch"
+    user: "Diego Brando"
+    stand: "Scary Monsters"
+    image: assets/stands/diego.png
+    sound: assets/sounds/diego.wav
+  kira:
+    pose: "The L-Shaped Hand Frame"
+    user: "Yoshikage Kira"
+    stand: "Killer Queen"
+    image: assets/stands/kira.png
+    sound: assets/sounds/kira.wav

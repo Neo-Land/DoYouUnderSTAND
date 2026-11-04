@@ -1,15 +1,15 @@
 # Stand images
 
-Put one PNG per Stand here, named exactly:
+One PNG per pose, named after the pose key in `config.yaml`:
 
-- star_platinum.png
-- gold_experience.png
-- crazy_diamond.png
-- sticky_fingers.png
-- scary_monsters.png
-- killer_queen.png
+- jotaro.png
+- giorno.png
+- josuke.png
+- bucciarati.png
+- diego.png
+- kira.png
 
-Use **transparent-background PNGs** (cut out with remove.bg, Photoshop or Figma) so the Stand
-blends in. A JPG or solid background shows up as a rectangle.
+Use **transparent-background PNGs** so the Stand blends in; other images show as rectangles.
+A missing image shows a labelled placeholder.
 
 These files are gitignored, so they stay on your machine and aren't published with the repo.
