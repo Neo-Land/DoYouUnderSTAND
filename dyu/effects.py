@@ -27,6 +27,23 @@ def load_rgba(path):
     return img
 
 
+def fade_bottom(img, fraction):
+    """Return a copy of BGRA `img` whose alpha ramps linearly to 0 over the bottom `fraction` of rows.
+
+    The first faded row keeps (almost) full alpha and the last row becomes fully transparent, so art
+    cropped at the legs dissolves instead of ending in a hard edge. fraction <= 0 returns `img` as is.
+    """
+    h = img.shape[0]
+    n = min(h, int(round(h * float(fraction))))
+    if n <= 0:
+        return img
+    out = img.copy()
+    ramp = np.linspace(1.0, 0.0, n + 1, dtype=np.float32)[1:]  # excludes 1.0, ends at exactly 0
+    a = out[h - n:, :, 3].astype(np.float32) * ramp[:, None]
+    out[h - n:, :, 3] = np.round(a).astype(np.uint8)
+    return out
+
+
 def blend_rgba(dst, src, x, y, opacity=1.0):
     """Alpha-blend BGRA `src` onto BGR `dst` in place, top-left corner at (x, y). Clips at edges."""
     H, W = dst.shape[:2]
@@ -216,6 +233,7 @@ class StandRenderer:
                 img = self._placeholder(label, int(h * 0.6), h)
             w = max(20, int(img.shape[1] * h / img.shape[0]))
             sprite = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
+            sprite = fade_bottom(sprite, float(scfg.get("fade_bottom", self.cfg.get("stand_fade_bottom", 0.25))))
             bob = math.sin(t * 2.0) * torso * 0.04  # Stands float
             x = int(cx + off_x * torso - w / 2)
             y = int(cy + off_y * torso + bob - h / 2)

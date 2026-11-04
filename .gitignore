@@ -28,3 +28,6 @@ assets/sounds/*
 Thumbs.db
 .vscode/
 .idea/
+
+# Stand preview renders contain the (copyrighted) Stand art
+reports/stand_previews/

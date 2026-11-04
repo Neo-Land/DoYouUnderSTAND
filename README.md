@@ -11,15 +11,25 @@ Strike a JoJo pose in front of your webcam and that character's Stand appears be
 | The Bestial Low Crouch | Diego Brando | Scary Monsters |
 | The L-Shaped Hand Frame | Yoshikage Kira | Killer Queen |
 
+## Progress
+
+| Part | Status |
+| --- | --- |
+| Record 6 poses + `none`, 3 sessions each | Done |
+| Pose classifier, leave-one-session-out | Done: 91.2% accuracy, macro-F1 0.927 (see [Results](#results)) |
+| Stand effects: art behind the user, bottom fade, per-Stand placement, ゴゴゴ text | Done; placement still being tuned |
+| Fewer false triggers during normal movement (`none`) | Next |
+| ASL mode (word signs, ASL Citizen) | Planned |
+
 ## How it works
 
 ```
 video/webcam frame
-  -> MediaPipe Pose Landmarker (33 body points + person mask) + Hand Landmarker (21 points per hand)
+  -> MediaPipe Pose Landmarker (33 body points) + Hand Landmarker (21 points per hand) + selfie segmenter (person mask)
   -> features: body centred on hips and scaled by torso length; hands centred on wrist, scaled by hand size
   -> classifier (logistic regression / random forest, picked by held-out score)
   -> smoothing: majority vote over 10 frames + confidence threshold + 1.5 s linger
-  -> render: Stand drawn into the frame, then the person mask puts you back in front of it
+  -> render: Stand image (bottom faded out) drawn into the frame, then the person mask puts you back in front of it
 ```
 
 Design choices worth knowing:
@@ -39,6 +49,8 @@ Design choices worth knowing:
 | + wrist-crop hand fallback | **91.2%** | **0.927** | 0.98 | 7 frames | 131 frames |
 
 Both rows use logistic regression, which beat the random forest each time. Hands found in Kira and Bucciarati clips went from as low as 0–50% per clip to 99–100%. Diego, Jotaro and Josuke are at F1 1.00. The weakest class is now `none` (recall 0.74): normal movement still gets read as Bucciarati, mostly in one session. Experiment notes: [docs/DEVLOG.md](docs/DEVLOG.md).
+
+The Stand-effects work (bottom fade, per-Stand placement, new person mask) changes only rendering, not the landmarks or classifier, so these scores are unchanged.
 
 ## Setup (Windows, Python 3.11)
 
@@ -95,7 +107,7 @@ Keys: `q` quit, `d` skeleton overlay, `m` mute.
 
 Stand images and sounds aren't part of this repo; they stay local and are git-ignored.
 
-- `assets/stands/<pose>.png`: one image per Stand. Transparent PNGs look best; others show as rectangles.
+- `assets/stands/<pose>.png`: one image per Stand. Transparent PNGs look best; others show as rectangles. The bottom 25% of each image fades out, so art cropped at the legs doesn't end in a hard edge.
 - `assets/sounds/<pose>.wav`: optional per-Stand sound (WAV, OGG or MP3; update the path in `config.yaml` if not .wav).
 - `assets/sounds/menacing.wav`: optional fallback sound for any Stand without its own.
 
@@ -105,7 +117,9 @@ Missing files never crash the app: no image shows a labelled placeholder, no sou
 
 - Stand flickers or triggers too easily: raise `threshold` or `min_votes`.
 - Stand is slow to appear: lower `min_votes`.
-- Stand in the wrong spot or size: `stand_scale`, `stand_offset_x`, `stand_offset_y` (globally, or per Stand with `scale`, `offset_x`, `offset_y`).
+- Stand in the wrong spot or size: `stand_scale`, `stand_offset_x`, `stand_offset_y` (globally, or per Stand with `scale`, `offset_x`, `offset_y`). Units are torso lengths; + x = screen right, − y = up.
+- Bottom fade: `stand_fade_bottom` (0.25 = bottom quarter fades out, 0 = off), or per Stand with `fade_bottom`.
+- Check placement without a webcam: `python scripts/render_stand_previews.py` saves one still per Stand from its `_s2` clip to `reports/stand_previews/` (git-ignored, since it contains the art).
 
 ## Tests
 
@@ -121,7 +135,7 @@ pytest -q
 
 ## Roadmap
 
-- ASL mode: 20 isolated signs from Microsoft Research's ASL Citizen dataset, signer-independent evaluation, GRU temporal model, top-5 predictions in the app.
+- ASL mode: 100 isolated signs from Microsoft Research's ASL Citizen dataset, signer-independent evaluation, GRU temporal model, top-5 predictions in the app.
 - FastAPI inference endpoint with latency measurements.
 
 JoJo's Bizarre Adventure characters and Stands belong to Hirohiko Araki / Shueisha. This is a non-commercial fan project.

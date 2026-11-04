@@ -28,7 +28,8 @@ effects:
   fade_seconds: 0.35
   stand_scale: 2.4    # Stand height, in torso lengths
   stand_offset_x: 0.7 # sideways shift, in torso lengths (+ = screen right)
-  stand_offset_y: -0.15
+  stand_offset_y: -0.15 # vertical shift of the Stand's centre from the shoulders (- = up)
+  stand_fade_bottom: 0.25 # fade the bottom 25% of each Stand image to transparent (0 = off)
   menacing_text: true
   menacing_char: "ゴ"
   sound: true
@@ -36,7 +37,7 @@ effects:
   default_sound: assets/sounds/menacing.wav   # played when a Stand has no sound of its own
 
 # One entry per pose. The key must match the clip names (jotaro_s1.mp4 -> jotaro).
-# Optional per-Stand overrides: scale, offset_x, offset_y
+# Optional per-Stand overrides: scale, offset_x, offset_y, fade_bottom (same units as effects:)
 stands:
   jotaro:
     pose: "The Direct Point"
@@ -44,33 +45,51 @@ stands:
     stand: "Star Platinum"
     image: assets/stands/jotaro.png
     sound: assets/sounds/jotaro.wav
+    scale: 3.0        # waist-up image
+    offset_x: 0.45
+    offset_y: -0.45
   giorno:
     pose: "The High-Fashion Collar Grab"
     user: "Giorno Giovanna"
     stand: "Gold Experience"
     image: assets/stands/giorno.png
     sound: assets/sounds/giorno.wav
+    scale: 3.4        # full-body image
+    offset_x: 0.6
+    offset_y: -0.1
   josuke:
     pose: "The S-Curve Backbend"
     user: "Josuke Higashikata"
     stand: "Crazy Diamond"
     image: assets/stands/josuke.png
     sound: assets/sounds/josuke.wav
+    scale: 3.0        # waist-up image
+    offset_x: 0.5
+    offset_y: -0.4
   bucciarati:
     pose: "The Floating Wrist-Cross"
     user: "Bruno Bucciarati"
     stand: "Sticky Fingers"
     image: assets/stands/bucciarati.png
     sound: assets/sounds/bucciarati.wav
+    scale: 3.4        # full-body image
+    offset_x: 0.6
+    offset_y: -0.1
   diego:
     pose: "The Bestial Low Crouch"
     user: "Diego Brando"
     stand: "Scary Monsters"
     image: assets/stands/diego.png
     sound: assets/sounds/diego.wav
+    scale: 2.0        # wide dinosaur image; faces left, toward the user
+    offset_x: 0.8
+    offset_y: 0.2
   kira:
     pose: "The L-Shaped Hand Frame"
     user: "Yoshikage Kira"
     stand: "Killer Queen"
     image: assets/stands/kira.png
     sound: assets/sounds/kira.wav
+    scale: 3.0        # waist-up image
+    offset_x: 0.5
+    offset_y: -0.4

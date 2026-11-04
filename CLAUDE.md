@@ -74,7 +74,9 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 1. [x] Record 6 poses + none, 3 sessions each (data/videos)
 2. [ ] Raise accuracy: 81.1% → 91.2% / macro-F1 0.927 with the wrist-crop hand fallback
        (2026-11-04). Weak spot now: `none` → Bucciarati (131 frames, mostly none_s2)
-3. [ ] Polish effects (Stand fade-in, positioning per pose)
+3. [x] Stand effects: art in assets/stands/, bottom fade, per-Stand placement in config.yaml,
+       person mask from the selfie segmenter (Pose Landmarker's float mask crashes on 0.10.35).
+       Fine-tune offsets live; preview with `python scripts/render_stand_previews.py`
 
 ### Part 2 — ASL
 4. [ ] Fingerspelling baseline: Kaggle ASL Alphabet via scripts/train_asl.ps1, then add a few

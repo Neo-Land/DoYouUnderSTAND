@@ -28,6 +28,11 @@ MODEL_URLS = {
         "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
         "hand_landmarker/float16/latest/hand_landmarker.task",
     ),
+    "segmenter": (
+        "selfie_segmenter.tflite",
+        "https://storage.googleapis.com/mediapipe-models/image_segmenter/"
+        "selfie_segmenter/float16/latest/selfie_segmenter.tflite",
+    ),
 }
 
 
@@ -61,7 +66,6 @@ class Detector:
             base_options=mp_python.BaseOptions(model_asset_path=str(paths["pose"])),
             running_mode=vision.RunningMode.VIDEO,
             num_poses=1,
-            output_segmentation_masks=segmentation,
         )
         hand_opts = vision.HandLandmarkerOptions(
             base_options=mp_python.BaseOptions(model_asset_path=str(paths["hand"])),
@@ -81,6 +85,18 @@ class Detector:
         self.pose = vision.PoseLandmarker.create_from_options(pose_opts)
         self.hands = vision.HandLandmarker.create_from_options(hand_opts)
         self.hand_crop = vision.HandLandmarker.create_from_options(crop_opts)
+        # Person mask from the selfie segmenter as a uint8 category mask. The Pose Landmarker's own
+        # mask is float32, and reading float masks (Image.numpy_view) aborts the process on
+        # mediapipe 0.10.35 / Windows. Category values: 0 = person, 255 = background.
+        self.segmenter = None
+        if segmentation:
+            seg_opts = vision.ImageSegmenterOptions(
+                base_options=mp_python.BaseOptions(model_asset_path=str(paths["segmenter"])),
+                running_mode=vision.RunningMode.VIDEO,
+                output_category_mask=True,
+                output_confidence_masks=False,
+            )
+            self.segmenter = vision.ImageSegmenter.create_from_options(seg_opts)
         self._last_ts = -1
         self.crop_recoveries = 0  # how many hands the crop pass found (for stats)
 
@@ -124,8 +140,10 @@ class Detector:
         hand_res = self.hands.detect_for_video(image, ts)
 
         out = FrameResult()
-        if pose_res.segmentation_masks:
-            out.mask = np.squeeze(pose_res.segmentation_masks[0].numpy_view()).astype(np.float32)
+        if self.segmenter is not None:
+            cat = self.segmenter.segment_for_video(image, ts).category_mask
+            if cat is not None:
+                out.mask = (np.squeeze(cat.numpy_view()) == 0).astype(np.float32)
 
         hands_hu = []
         for hand in hand_res.hand_landmarks or []:
@@ -166,6 +184,8 @@ class Detector:
         self.pose.close()
         self.hands.close()
         self.hand_crop.close()
+        if self.segmenter is not None:
+            self.segmenter.close()
 
     def __enter__(self):
         return self
