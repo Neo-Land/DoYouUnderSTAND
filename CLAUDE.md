@@ -29,6 +29,9 @@ part most relevant to the role, so it should end up solid, not a token feature.
 - `src/train.py`      — train a classifier → `models/<mode>.joblib`
 - `src/effects.py`    — Stand compositing, menacing text, sound
 - `src/app.py`        — live demo (`--mode pose` or `--mode asl`)
+- `src/download_asl.py` — downloads Kaggle ASL Alphabet (grassknoted/asl-alphabet) → `datasets/`
+- `src/import_asl.py` — dataset images → hand landmarks → `data/asl.csv`
+- `scripts/train_asl.ps1` — runs download → import → train in one go, logs to `logs/train_asl.log`
 - `assets/stands/`    — Stand PNGs (transparent background), user-supplied, not committed
 - `assets/sounds/`    — sound effects, user-supplied, not committed
 - `data/`, `models/`  — generated; not committed
@@ -45,6 +48,9 @@ plus `neutral` (standing normally / not posing) — always record this class.
 - Train: `python src/train.py --mode pose`
 - Run: `python src/app.py --mode pose`
 - ASL: same commands with `--mode asl` and letter labels (e.g. `--label A`)
+- ASL from the Kaggle dataset (unattended): `powershell -ExecutionPolicy Bypass -File scripts/train_asl.ps1`
+  Needs `%USERPROFILE%\.kaggle\kaggle.json`. Takes roughly 20–40 min on CPU. Check the log for
+  per-letter accuracy; low letters (M/N/S/T etc.) are expected to be confused.
 
 ## Conventions
 - Frames from the webcam are mirrored (selfie view) before processing, in both record and app.
@@ -53,10 +59,28 @@ plus `neutral` (standing normally / not posing) — always record this class.
   `landmarks.Extractor`. If the feature layout changes, old CSVs/models are invalid: re-record.
 - Don't commit copyrighted images or audio (assets are gitignored).
 
+## ASL Citizen license rules (Microsoft Research License — must follow)
+Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research use only.
+- NEVER commit or publish: the videos, frames/clips of signers, landmarks extracted from the
+  videos, or models trained on it. Keep all of it under `datasets/`, `data/` or `models/`.
+- Signers are identifiable people: no dataset frames in the demo video, README or slides.
+- No public hosted demo built on it. Local runs + a demo video of Neo only.
+- OK to publish: code, accuracy numbers/charts, the write-up, and a citation of the paper.
+- Delete the data when the project's research is done.
+
 ## Roadmap
+### Part 1 — JoJo poses
 1. [ ] Record 6 poses + neutral (~200+ samples each, a few angles/distances)
 2. [ ] Train, check per-class accuracy, tune STABLE_FRAMES / threshold
 3. [ ] Polish effects (Stand fade-in, positioning per pose)
-4. [ ] ASL mode: start with static fingerspelling letters (A–Y minus J/Z), then motion signs
-       with a sequence model (e.g. LSTM over landmark windows)
-5. [ ] Record a 60–90s demo video + README write-up for the application
+
+### Part 2 — ASL
+4. [ ] Fingerspelling baseline: Kaggle ASL Alphabet via scripts/train_asl.ps1, then add a few
+       hundred of Neo's own webcam samples per letter (dataset is one signer)
+5. [ ] Word signs on ASL Citizen (downloaded to datasets/asl_citizen/): pick 50–100 common signs,
+       extract landmark sequences from videos, train a sequence model (LSTM/GRU), report accuracy
+       on the user-independent test split (unseen signers)
+6. [ ] Add word-sign mode to app.py alongside fingerspelling
+
+### Ship
+7. [ ] Record a 60–90s demo video + README write-up for the application

@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
+DATASETS_DIR = ROOT / "datasets"   # downloaded public datasets (gitignored)
 MODELS_DIR = ROOT / "models"
 STANDS_DIR = ROOT / "assets" / "stands"
 SOUNDS_DIR = ROOT / "assets" / "sounds"

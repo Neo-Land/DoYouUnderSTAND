@@ -17,7 +17,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 
 import config
-from landmarks import FEATURE_DIM, mirror_pose_features
+from landmarks import FEATURE_DIM, MIRROR
 
 
 def load(mode):
@@ -38,7 +38,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=config.MODES, default="pose")
     ap.add_argument("--no-mirror", action="store_true",
-                    help="pose mode: don't add left/right mirrored copies of samples")
+                    help="don't add left/right mirrored copies of samples")
     args = ap.parse_args()
 
     X, y = load(args.mode)
@@ -54,8 +54,9 @@ def main():
 
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
-    if args.mode == "pose" and not args.no_mirror:
-        X_tr = np.vstack([X_tr, np.array([mirror_pose_features(v) for v in X_tr])])
+    mirror = MIRROR[args.mode]
+    if not args.no_mirror:
+        X_tr = np.vstack([X_tr, np.array([mirror(v) for v in X_tr])])
         y_tr = np.concatenate([y_tr, y_tr])
 
     clf = RandomForestClassifier(n_estimators=300, n_jobs=-1, random_state=42,
@@ -70,8 +71,8 @@ def main():
 
     # Refit on everything for the final model
     X_all, y_all = X, y
-    if args.mode == "pose" and not args.no_mirror:
-        X_all = np.vstack([X, np.array([mirror_pose_features(v) for v in X])])
+    if not args.no_mirror:
+        X_all = np.vstack([X, np.array([mirror(v) for v in X])])
         y_all = np.concatenate([y, y])
     clf.fit(X_all, y_all)
 

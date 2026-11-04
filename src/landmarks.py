@@ -53,16 +53,29 @@ def hand_features(hand_landmarks):
     return (lm / scale).flatten()
 
 
+def mirror_hand_features(vec):
+    """Mirror image of a hands vector: negate x and swap the left/right hand slots.
+    Lets a model trained on right-handed signing also read left-handed signing."""
+    hands = vec.reshape(2, 21, 3).copy()
+    hands[:, :, 0] *= -1
+    return hands[::-1].flatten()
+
+
+MIRROR = {"pose": mirror_pose_features, "asl": mirror_hand_features}
+
+
 class Extractor:
     """Runs MediaPipe on BGR frames and returns (features or None, raw results)."""
 
-    def __init__(self, mode: str):
+    def __init__(self, mode: str, static: bool = False):
+        """static=True for unrelated still images (datasets); False for video/webcam."""
         self.mode = mode
         if mode == "pose":
-            self.model = mp_pose.Pose(model_complexity=1, min_detection_confidence=0.5,
-                                      min_tracking_confidence=0.5)
+            self.model = mp_pose.Pose(static_image_mode=static, model_complexity=1,
+                                      min_detection_confidence=0.5, min_tracking_confidence=0.5)
         elif mode == "asl":
-            self.model = mp_hands.Hands(max_num_hands=2, min_detection_confidence=0.6,
+            self.model = mp_hands.Hands(static_image_mode=static, max_num_hands=2,
+                                        min_detection_confidence=0.5 if static else 0.6,
                                         min_tracking_confidence=0.5)
         else:
             raise ValueError(f"unknown mode {mode!r}")

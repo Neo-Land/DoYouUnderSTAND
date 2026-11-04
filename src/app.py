@@ -98,7 +98,12 @@ def main():
                     effects.draw_stand_name(frame, active, alpha)
             else:  # ASL
                 if stable and stable != asl_last and stable != config.NEUTRAL_LABEL:
-                    asl_text = (asl_text + stable)[-30:]
+                    if stable == "del":
+                        asl_text = asl_text[:-1]
+                    elif stable == "space":
+                        asl_text = (asl_text + " ")[-30:]
+                    else:
+                        asl_text = (asl_text + stable)[-30:]
                 asl_last = stable
                 if stable:
                     put(frame, stable, (w - 160, 130), scale=4, thick=6, color=(90, 230, 255))

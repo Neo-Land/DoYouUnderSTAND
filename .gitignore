@@ -13,6 +13,8 @@ data/*
 models/*
 !models/.gitkeep
 clips/
+datasets/
+logs/
 
 # Copyrighted assets: keep local, don't publish
 assets/stands/*
