@@ -77,14 +77,16 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 3. [x] Stand effects: art in assets/stands/, bottom fade, per-Stand placement in config.yaml,
        person mask from the selfie segmenter (Pose Landmarker's float mask crashes on 0.10.35).
        Fine-tune offsets live; preview with `python scripts/render_stand_previews.py`
+4. [ ] False triggers: smoother tuned with scripts/eval_live.py + scripts/tune_smoothing.py,
+       42% → 25% of normal movement shows a Stand (2026-11-04). Rest needs more varied `none` clips
 
 ### Part 2 — ASL
-4. [ ] Fingerspelling baseline: Kaggle ASL Alphabet via scripts/train_asl.ps1, then add a few
+5. [ ] Fingerspelling baseline: Kaggle ASL Alphabet via scripts/train_asl.ps1, then add a few
        hundred of Neo's own webcam samples per letter (dataset is one signer)
-5. [ ] Word signs on ASL Citizen (downloaded to datasets/asl_citizen/): pick 50–100 common signs,
+6. [ ] Word signs on ASL Citizen (downloaded to datasets/asl_citizen/): pick 50–100 common signs,
        extract landmark sequences from videos, train a sequence model (LSTM/GRU), report accuracy
        on the user-independent test split (unseen signers)
-6. [ ] Add word-sign mode to app.py alongside fingerspelling
+7. [ ] Add word-sign mode to app.py alongside fingerspelling
 
 ### Ship
-7. [ ] Record a 60–90s demo video + README write-up for the application
+8. [ ] Record a 60–90s demo video + README write-up for the application

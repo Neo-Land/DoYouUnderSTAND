@@ -18,7 +18,7 @@ Strike a JoJo pose in front of your webcam and that character's Stand appears be
 | Record 6 poses + `none`, 3 sessions each | Done |
 | Pose classifier, leave-one-session-out | Done: 91.2% accuracy, macro-F1 0.927 (see [Results](#results)) |
 | Stand effects: art behind the user, bottom fade, per-Stand placement, ゴゴゴ text | Done; placement still being tuned |
-| Fewer false triggers during normal movement (`none`) | Next |
+| Fewer false triggers during normal movement (`none`) | Improved 42% → 25% by tuning smoothing; needs more varied `none` clips |
 | ASL mode (word signs, ASL Citizen) | Planned |
 
 ## How it works
@@ -51,6 +51,17 @@ Design choices worth knowing:
 Both rows use logistic regression, which beat the random forest each time. Hands found in Kira and Bucciarati clips went from as low as 0–50% per clip to 99–100%. Diego, Jotaro and Josuke are at F1 1.00. The weakest class is now `none` (recall 0.74): normal movement still gets read as Bucciarati, mostly in one session. Experiment notes: [docs/DEVLOG.md](docs/DEVLOG.md).
 
 The Stand-effects work (bottom fade, per-Stand placement, new person mask) changes only rendering, not the landmarks or classifier, so these scores are unchanged.
+
+### Live behaviour
+
+Per-frame accuracy isn't what a user sees: the app votes over a window of frames before a Stand appears. `scripts/eval_live.py` replays every frame of every clip through the app's detector and smoother, each session scored by a model trained on the other two.
+
+| Smoothing settings | Stand showing during normal movement | Correct Stand while posing | Pose clips that trigger | Time to trigger |
+| --- | --- | --- | --- | --- |
+| Before (threshold 0.6, 7 of 10 frames, 1.5 s linger) | 42% | 94% | 17 / 18 | 0.2 s |
+| Tuned (threshold 0.4, 18 of 20 frames, 0.3 s linger) | **25%** | **96%** | **18 / 18** | 0.6 s |
+
+A wrong Stand never appeared during a pose clip. Most of the remaining false triggers come from one `none` clip where I'm texting with both hands at chest height, which the model confidently reads as Bucciarati because no other session contains texting. More varied `none` clips are the fix for that; no smoothing setting removes it.
 
 ## Setup (Windows, Python 3.11)
 
@@ -115,8 +126,9 @@ Missing files never crash the app: no image shows a labelled placeholder, no sou
 
 ## Tuning (`config.yaml`)
 
-- Stand flickers or triggers too easily: raise `threshold` or `min_votes`.
-- Stand is slow to appear: lower `min_votes`.
+- Stand flickers or triggers too easily: raise `min_votes` (or `window`) or `threshold`.
+- Stand is slow to appear: lower `min_votes` or `window`.
+- Find settings from data instead of guessing: `python scripts/eval_live.py` once (caches every frame's landmarks), then `python scripts/tune_smoothing.py` to grid-search `threshold` / `window` / `min_votes` / `linger_seconds` on held-out sessions.
 - Stand in the wrong spot or size: `stand_scale`, `stand_offset_x`, `stand_offset_y` (globally, or per Stand with `scale`, `offset_x`, `offset_y`). Units are torso lengths; + x = screen right, − y = up.
 - Bottom fade: `stand_fade_bottom` (0.25 = bottom quarter fades out, 0 = off), or per Stand with `fade_bottom`.
 - Check placement without a webcam: `python scripts/render_stand_previews.py` saves one still per Stand from its `_s2` clip to `reports/stand_previews/` (git-ignored, since it contains the art).

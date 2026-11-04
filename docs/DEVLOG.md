@@ -3,6 +3,48 @@
 Experiments on the JoJo pose classifier, newest first. All scores are leave-one-session-out
 (3 sessions, 2,735 frames, 7 classes, one person) unless noted.
 
+## 2026-11-04: Fewer false triggers by tuning the smoother
+
+**Problem.** Per-frame scores don't show what a user sees. `scripts/eval_live.py` now replays every
+frame of every clip (7,555 frames) through the app's detector and `PoseSmoother`, each session
+scored by a model trained on the other two. With the old settings (threshold 0.6, 7 of 10 frames,
+1.5 s linger), a Stand showed during 42% of normal movement (`none_s1` 13%, `none_s2` 85%,
+`none_s3` 28%), and `giorno_s2` never triggered.
+
+**Diagnosis.**
+- `none_s1`'s wrong frames are low-confidence (median 0.65), and the 1.5 s linger turned short
+  bursts into long false Stands (15 wrong frames → 92 frames of Giorno on screen).
+- `none_s2` is me texting with both hands at chest height. The held-out model has never seen texting
+  as `none` and calls it Bucciarati with confidence 1.00. No threshold can filter that out.
+- `giorno_s2` is classified correctly but at confidence ~0.42, below the 0.6 threshold, so it never
+  collected votes.
+
+**Search.** `scripts/tune_smoothing.py` caches landmarks once and grid-searches 1,200 combinations:
+logistic-regression C (0.01–1) × threshold (0.4–0.8) × window (10–30) × vote share (60–90%) ×
+linger (0.3–1.5 s). C made no difference. Weighting `none` ×3 or ×10 in training helped by only
+1–4 points, and ×10 broke `giorno_s2` again, so the model is unchanged.
+
+**Result** (`config.yaml` recognition: threshold 0.4, window 20, min_votes 18, linger 0.3 s):
+
+| | Before | After |
+| --- | --- | --- |
+| Stand showing during normal movement | 42% | 25% |
+| none_s1 / s2 / s3 | 13% / 85% / 28% | 0% / 61% / 12% |
+| Correct Stand while posing (held part) | 94% | 96% |
+| Pose clips that trigger | 17 / 18 | 18 / 18 |
+| Wrong Stand during a pose clip | 0% | 0% |
+| Median time to trigger | 0.2 s | 0.6 s |
+
+**Caveat.** The settings were chosen on the same 21 clips they're scored on, so expect live numbers
+to be somewhat worse. The model the app ships is trained on all sessions, so texting itself is now
+known `none`, but other everyday movements it hasn't seen will behave like texting did here.
+
+**Still weak.**
+- Confident false triggers on unseen everyday movement. Next: record more varied `none` clips
+  (texting, phone call, arms crossed, touching the head or cap, walking in and out of frame).
+- `giorno_s2` triggers late (1.7 s) and is shown for only 35% of the hold: low confidence in that
+  session. More Giorno clips would help.
+
 ## 2026-11-04: Stand art, bottom fade, per-Stand placement, person-mask fix
 
 **Art.** Six transparent Stand images in `assets/stands/` (git-ignored fan art, never committed).
