@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets
+.env
+
+# Generated data and models
+data/*
+!data/.gitkeep
+models/*
+!models/.gitkeep
+clips/
+
+# Copyrighted assets: keep local, don't publish
+assets/stands/*
+!assets/stands/README.md
+assets/sounds/*
+!assets/sounds/README.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
