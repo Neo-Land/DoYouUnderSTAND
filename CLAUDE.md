@@ -75,8 +75,9 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 2. [ ] Raise accuracy: 81.1% → 91.2% / macro-F1 0.927 with the wrist-crop hand fallback
        (2026-11-04). Weak spot now: `none` → Bucciarati (131 frames, mostly none_s2)
 3. [x] Stand effects: art in assets/stands/, bottom fade, per-Stand placement in config.yaml,
-       person mask from the selfie segmenter (Pose Landmarker's float mask crashes on 0.10.35).
-       Fine-tune offsets live; preview with `python scripts/render_stand_previews.py`
+       person mask from the selfie segmenter on a body crop (Pose Landmarker's float mask crashes
+       on 0.10.35). App ~20 fps at 1280x720 (models on a thread pool). Placement tuned for 16:9 with
+       `python scripts/render_stand_previews.py --landscape`; confirm on a live webcam
 4. [ ] False triggers: smoother tuned with scripts/eval_live.py + scripts/tune_smoothing.py,
        42% → 25% of normal movement shows a Stand (2026-11-04). Rest needs more varied `none` clips
 

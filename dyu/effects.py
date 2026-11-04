@@ -222,6 +222,7 @@ class StandRenderer:
 
         cx, cy, torso = self.anchor
         layer = frame.copy()
+        boxes = []
         for label, s in visible:
             scfg = s["cfg"]
             scale = float(scfg.get("scale", self.cfg.get("stand_scale", 2.4)))
@@ -238,13 +239,22 @@ class StandRenderer:
             x = int(cx + off_x * torso - w / 2)
             y = int(cy + off_y * torso + bob - h / 2)
             blend_rgba(layer, sprite, x, y, s["alpha"])
+            boxes.append((x, y, x + w, y + h))
 
         # Put the person back on top of the Stand: out = person where mask=1, Stand layer elsewhere.
-        if result.mask is not None and result.mask.shape[:2] == frame.shape[:2]:
-            m = cv2.GaussianBlur(result.mask, (0, 0), 2.0)[:, :, None]
-            out = (frame.astype(np.float32) * m + layer.astype(np.float32) * (1 - m)).astype(np.uint8)
-        else:
-            out = layer
+        # Only the Stands' area can differ from the camera frame, so blend just that region.
+        out = layer
+        if result.mask is not None and result.mask.shape[:2] == frame.shape[:2] and boxes:
+            H, W = frame.shape[:2]
+            pad = 8  # room for the blur
+            x0 = max(0, min(b[0] for b in boxes) - pad)
+            y0 = max(0, min(b[1] for b in boxes) - pad)
+            x1 = min(W, max(b[2] for b in boxes) + pad)
+            y1 = min(H, max(b[3] for b in boxes) + pad)
+            if x0 < x1 and y0 < y1:
+                m = cv2.GaussianBlur(result.mask[y0:y1, x0:x1], (0, 0), 2.0)[:, :, None]
+                person, stand = frame[y0:y1, x0:x1].astype(np.float32), layer[y0:y1, x0:x1].astype(np.float32)
+                out[y0:y1, x0:x1] = (person * m + stand * (1 - m)).astype(np.uint8)
 
         if self.menacing:
             top_alpha = max(s["alpha"] for _, s in visible)

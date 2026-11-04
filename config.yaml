@@ -67,8 +67,8 @@ stands:
     image: assets/stands/josuke.png
     sound: assets/sounds/josuke.wav
     scale: 3.0        # waist-up image
-    offset_x: 0.5
-    offset_y: -0.4
+    offset_x: 0.6
+    offset_y: -0.3
   bucciarati:
     pose: "The Floating Wrist-Cross"
     user: "Bruno Bucciarati"
@@ -76,7 +76,7 @@ stands:
     image: assets/stands/bucciarati.png
     sound: assets/sounds/bucciarati.wav
     scale: 3.4        # full-body image
-    offset_x: 0.6
+    offset_x: 0.85
     offset_y: -0.1
   diego:
     pose: "The Bestial Low Crouch"
@@ -84,9 +84,9 @@ stands:
     stand: "Scary Monsters"
     image: assets/stands/diego.png
     sound: assets/sounds/diego.wav
-    scale: 2.0        # wide dinosaur image; faces left, toward the user
-    offset_x: 0.8
-    offset_y: 0.2
+    scale: 2.8        # wide dinosaur image; faces left, toward the user (crouch shortens the torso)
+    offset_x: 1.1
+    offset_y: -0.2
   kira:
     pose: "The L-Shaped Hand Frame"
     user: "Yoshikage Kira"

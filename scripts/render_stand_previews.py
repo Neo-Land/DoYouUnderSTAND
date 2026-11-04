@@ -4,6 +4,7 @@ Usage:
     python scripts/render_stand_previews.py                  # all Stands, session s2 clips
     python scripts/render_stand_previews.py --session s3 --at 0.6
     python scripts/render_stand_previews.py diego kira       # only these Stands
+    python scripts/render_stand_previews.py --landscape      # pad to 16:9, like a webcam frame
 
 For each Stand it plays <pose>_<session>.* up to `--at` (fraction of the clip) with that Stand
 forced on, so the image has fully faded in and the anchor has settled, then saves the frame with
@@ -31,7 +32,7 @@ def find_clip(videos_dir, pose, session):
     return None
 
 
-def render(path, pose, renderer, at, max_height):
+def render(path, pose, renderer, at, max_height, landscape=False):
     cap = cv2.VideoCapture(str(path))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -48,6 +49,11 @@ def render(path, pose, renderer, at, max_height):
             if frame.shape[0] > max_height:
                 s = max_height / frame.shape[0]
                 frame = cv2.resize(frame, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
+            if landscape and frame.shape[1] < frame.shape[0] * 16 // 9:
+                pad = frame.shape[0] * 16 // 9 - frame.shape[1]
+                # stretch the edge pixels outward: flat black padding gets marked as "person" by the
+                # segmenter, and mirroring would duplicate the person
+                frame = cv2.copyMakeBorder(frame, 0, 0, pad // 2, pad - pad // 2, cv2.BORDER_REPLICATE)
             t = i / fps
             res = det.process(frame, t * 1000.0)
             renderer.update(pose, 1.0 / fps)
@@ -62,6 +68,7 @@ def main():
     ap.add_argument("stands", nargs="*", help="Stand keys to render (default: all in config.yaml)")
     ap.add_argument("--session", default="s2")
     ap.add_argument("--at", type=float, default=0.5, help="where in the clip to grab the frame (0-1)")
+    ap.add_argument("--landscape", action="store_true", help="pad portrait clips to 16:9 like a webcam")
     ap.add_argument("--out", default="reports/stand_previews")
     args = ap.parse_args()
 
@@ -75,14 +82,14 @@ def main():
             print(f"- {pose}: no {pose}_{args.session} clip, skipped")
             continue
         renderer = StandRenderer({pose: cfg["stands"][pose]}, renderer_cfg)  # fresh fade + anchor
-        img = render(clip, pose, renderer, args.at, cfg["extraction"]["max_height"])
+        img = render(clip, pose, renderer, args.at, cfg["extraction"]["max_height"], args.landscape)
         if img is None:
             print(f"- {pose}: couldn't read {clip.name}")
             continue
         s = cfg["stands"][pose]
         cv2.putText(img, f"{pose}  scale {s.get('scale')}  x {s.get('offset_x')}  y {s.get('offset_y')}",
                     (12, 28), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
-        dest = out_dir / f"{pose}.jpg"
+        dest = out_dir / f"{pose}{'_landscape' if args.landscape else ''}.jpg"
         cv2.imwrite(str(dest), img, [cv2.IMWRITE_JPEG_QUALITY, 90])
         print(f"- {pose}: {clip.name} -> {dest}")
 

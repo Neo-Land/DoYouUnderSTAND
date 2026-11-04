@@ -3,6 +3,40 @@
 Experiments on the JoJo pose classifier, newest first. All scores are leave-one-session-out
 (3 sessions, 2,735 frames, 7 classes, one person) unless noted.
 
+## 2026-11-04: App speed 5 → 20 fps; Stand placement for webcam frames
+
+**Speed problem.** Timing the app's per-frame work on the clips padded to 1280×720 (webcam size)
+gave ~180–200 ms per frame, about 5 fps. Breakdown at that size: pose 14 ms, hands 12 ms, each
+wrist crop 20 ms, person mask **85 ms**, drawing **48 ms**. Worse, the selfie segmenter run on a
+whole wide frame mostly missed a full-body person (only a blob around the head), so the Stand
+would have been drawn over the user live.
+
+**Changes** (`dyu/landmarks.py`, `dyu/effects.py`):
+- The segmenter runs on a square crop around the body, built from the pose landmarks with a 25%
+  margin and scaled to its 256×256 input, and the mask is pasted back. 13 ms, and it matches the
+  known-good portrait masks at IoU 0.92–0.97.
+- The Stand-behind-person blend and the mask blur run only on the Stands' area, not the whole
+  frame: 48 → ~10 ms.
+- Pose and hands, and then the two wrist crops and the mask, run on a 3-thread pool (MediaPipe
+  releases the GIL; each crop has its own HandLandmarker). The landmarks are identical to the
+  sequential version: 0 differing frames on kira_s2 and jotaro_s2 against the cached run.
+
+**Result:** ~49 ms per frame at 1280×720, about **20 fps** (portrait clips ~22 fps).
+
+**Placement.** `render_stand_previews.py --landscape` pads the portrait clips to 16:9 so placement
+can be judged at webcam proportions. Padding stretches the edge pixels: flat black got marked as
+"person" by the segmenter (hiding the Stand), and mirroring duplicated the person and confused
+the pose detector. Changes (torso lengths):
+
+| Stand | Before (scale, x, y) | After |
+| --- | --- | --- |
+| josuke | 3.0, 0.5, -0.4 | 3.0, 0.6, -0.3 (head was touching the top) |
+| bucciarati | 3.4, 0.6, -0.1 | 3.4, 0.85, -0.1 (was mostly hidden behind the user) |
+| diego | 2.0, 0.8, 0.2 | 2.8, 1.1, -0.2 (crouching shortens the torso, so it was tiny and low) |
+
+Jotaro, Giorno and Kira are unchanged. All six now sit fully in frame, beside and behind the user.
+Still to do: confirm on a real webcam, where distance from the camera and the room will differ.
+
 ## 2026-11-04: Fewer false triggers by tuning the smoother
 
 **Problem.** Per-frame scores don't show what a user sees. `scripts/eval_live.py` now replays every

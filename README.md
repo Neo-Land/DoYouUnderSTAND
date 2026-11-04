@@ -17,7 +17,7 @@ Strike a JoJo pose in front of your webcam and that character's Stand appears be
 | --- | --- |
 | Record 6 poses + `none`, 3 sessions each | Done |
 | Pose classifier, leave-one-session-out | Done: 91.2% accuracy, macro-F1 0.927 (see [Results](#results)) |
-| Stand effects: art behind the user, bottom fade, per-Stand placement, ゴゴゴ text | Done; placement still being tuned |
+| Stand effects: art behind the user, bottom fade, per-Stand placement, ゴゴゴ text | Done; ~20 fps at 1280×720; final check on a live webcam |
 | Fewer false triggers during normal movement (`none`) | Improved 42% → 25% by tuning smoothing; needs more varied `none` clips |
 | ASL mode (word signs, ASL Citizen) | Planned |
 
@@ -25,7 +25,8 @@ Strike a JoJo pose in front of your webcam and that character's Stand appears be
 
 ```
 video/webcam frame
-  -> MediaPipe Pose Landmarker (33 body points) + Hand Landmarker (21 points per hand) + selfie segmenter (person mask)
+  -> MediaPipe Pose Landmarker (33 body points) + Hand Landmarker (21 points per hand), run in parallel
+  -> selfie segmenter on a square crop around the body (person mask), in parallel with the wrist-crop hand pass
   -> features: body centred on hips and scaled by torso length; hands centred on wrist, scaled by hand size
   -> classifier (logistic regression / random forest, picked by held-out score)
   -> smoothing: majority vote over 10 frames + confidence threshold + 1.5 s linger
@@ -131,13 +132,25 @@ Missing files never crash the app: no image shows a labelled placeholder, no sou
 - Find settings from data instead of guessing: `python scripts/eval_live.py` once (caches every frame's landmarks), then `python scripts/tune_smoothing.py` to grid-search `threshold` / `window` / `min_votes` / `linger_seconds` on held-out sessions.
 - Stand in the wrong spot or size: `stand_scale`, `stand_offset_x`, `stand_offset_y` (globally, or per Stand with `scale`, `offset_x`, `offset_y`). Units are torso lengths; + x = screen right, − y = up.
 - Bottom fade: `stand_fade_bottom` (0.25 = bottom quarter fades out, 0 = off), or per Stand with `fade_bottom`.
-- Check placement without a webcam: `python scripts/render_stand_previews.py` saves one still per Stand from its `_s2` clip to `reports/stand_previews/` (git-ignored, since it contains the art).
+- Check placement without a webcam: `python scripts/render_stand_previews.py --landscape` saves one still per Stand from its `_s2` clip, padded to 16:9 like a webcam frame, to `reports/stand_previews/` (git-ignored, since it contains the art). Leave out `--landscape` to see the raw portrait clip.
 
 ## Tests
 
 ```powershell
 pytest -q
 ```
+
+## Speed
+
+Measured on the recorded clips padded to 1280×720 (a webcam-sized frame), 16-core desktop CPU, everything on:
+
+| | Before | After |
+| --- | --- | --- |
+| Person mask | 85 ms (whole frame; mostly missed a full-body person) | 13 ms (crop around the body) |
+| Drawing the Stand behind you | 48 ms (whole frame) | ~10 ms (Stand's area only) |
+| Whole frame | ~180–200 ms (~5 fps) | ~49 ms (**~20 fps**) |
+
+The models run on a small thread pool: MediaPipe releases Python's lock, so pose and hands, and then the two wrist crops and the mask, run at the same time. Landmarks are bit-for-bit identical to running them one by one.
 
 ## Limitations
 

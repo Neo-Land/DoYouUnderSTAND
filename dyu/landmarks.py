@@ -4,6 +4,7 @@ Uses the MediaPipe Tasks API (Pose Landmarker + Hand Landmarker). The model file
 (~30 MB) download automatically into models/ the first time.
 """
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -84,10 +85,17 @@ class Detector:
         )
         self.pose = vision.PoseLandmarker.create_from_options(pose_opts)
         self.hands = vision.HandLandmarker.create_from_options(hand_opts)
-        self.hand_crop = vision.HandLandmarker.create_from_options(crop_opts)
+        # One crop detector per hand so both crops can run at the same time (a task object must not
+        # be used from two threads at once).
+        self.hand_crops = [vision.HandLandmarker.create_from_options(crop_opts) for _ in range(2)]
+        # MediaPipe calls release the GIL, so independent models run in parallel on these threads.
+        # Results are identical to running them one after another; only the wall time changes.
+        self._pool = ThreadPoolExecutor(max_workers=3)
         # Person mask from the selfie segmenter as a uint8 category mask. The Pose Landmarker's own
         # mask is float32, and reading float masks (Image.numpy_view) aborts the process on
         # mediapipe 0.10.35 / Windows. Category values: 0 = person, 255 = background.
+        # The segmenter runs on a square crop around the body (see _person_mask): on a whole
+        # 1280x720 frame it took ~85 ms and mostly missed a full-body person.
         self.segmenter = None
         if segmentation:
             seg_opts = vision.ImageSegmenterOptions(
@@ -102,7 +110,7 @@ class Detector:
 
     CROP_SIZE = 256  # pixels the wrist crop is enlarged to
 
-    def _detect_hand_in_crop(self, rgb, wrist, index, torso_px):
+    def _detect_hand_in_crop(self, landmarker, rgb, wrist, index, torso_px):
         """Look for one hand around a wrist. Returns (21, 2) pixel coords in the full frame, or None."""
         H, W = rgb.shape[:2]
         center = index  # the pose "index" point sits at the knuckles, roughly mid-hand
@@ -116,7 +124,7 @@ class Detector:
         scale = self.CROP_SIZE / max(cw, ch)
         if scale > 1:
             crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-        res = self.hand_crop.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(crop)))
+        res = landmarker.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(crop)))
         if not res.hand_landmarks:
             return None
         pts = np.array([[x0 + lm.x * cw, y0 + lm.y * ch] for lm in res.hand_landmarks[0]], dtype=np.float32)
@@ -136,15 +144,11 @@ class Detector:
         h, w = frame_bgr.shape[:2]
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        pose_res = self.pose.detect_for_video(image, ts)
+        pose_job = self._pool.submit(self.pose.detect_for_video, image, ts)
         hand_res = self.hands.detect_for_video(image, ts)
+        pose_res = pose_job.result()
 
         out = FrameResult()
-        if self.segmenter is not None:
-            cat = self.segmenter.segment_for_video(image, ts).category_mask
-            if cat is not None:
-                out.mask = (np.squeeze(cat.numpy_view()) == 0).astype(np.float32)
-
         hands_hu = []
         for hand in hand_res.hand_landmarks or []:
             pts = np.array([[lm.x * w / h, lm.y] for lm in hand], dtype=np.float32)
@@ -162,8 +166,40 @@ class Detector:
                 out.pose = pose
                 out.pose_px = np.array([[lm.x * w, lm.y * h] for lm in lms], dtype=np.float32)
                 out.left_hand, out.right_hand = assign_hands(pose[:, :2], hands_hu)
+                mask_job = (self._pool.submit(self._person_mask, rgb, out.pose_px, ts)
+                            if self.segmenter is not None else None)
                 self._recover_missing_hands(rgb, out)
+                if mask_job is not None:
+                    out.mask = mask_job.result()
         return out
+
+    SEG_SIZE = 256      # the selfie segmenter's input size
+    SEG_MARGIN = 0.25   # extra space around the body box, as a share of its longer side (each way)
+
+    def _person_mask(self, rgb, pose_px, ts):
+        """Person mask (H, W) float 0/1 from the selfie segmenter run on a square crop around the body.
+
+        The segmenter is built for close-up selfies at 256x256. Cropping to the body first makes a
+        full-body person fill its input like a selfie does, which is both faster and more accurate.
+        """
+        H, W = rgb.shape[:2]
+        pts = np.clip(pose_px, [0, 0], [W - 1, H - 1])  # off-screen landmarks would inflate the box
+        (x0, y0), (x1, y1) = pts.min(0), pts.max(0)
+        side = int(max(x1 - x0, y1 - y0) * (1 + 2 * self.SEG_MARGIN)) + 1
+        X0, Y0 = int((x0 + x1 - side) / 2), int((y0 + y1 - side) / 2)
+        X1, Y1 = X0 + side, Y0 + side
+        cx0, cy0, cx1, cy1 = max(0, X0), max(0, Y0), min(W, X1), min(H, Y1)  # part inside the frame
+        crop = cv2.copyMakeBorder(rgb[cy0:cy1, cx0:cx1], cy0 - Y0, Y1 - cy1, cx0 - X0, X1 - cx1,
+                                  cv2.BORDER_REPLICATE)
+        small = np.ascontiguousarray(cv2.resize(crop, (self.SEG_SIZE, self.SEG_SIZE), interpolation=cv2.INTER_AREA))
+        cat = self.segmenter.segment_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=small), ts).category_mask
+        if cat is None:
+            return None
+        m = cv2.resize((np.squeeze(cat.numpy_view()) == 0).astype(np.float32), (side, side),
+                       interpolation=cv2.INTER_LINEAR)
+        mask = np.zeros((H, W), np.float32)
+        mask[cy0:cy1, cx0:cx1] = m[cy0 - Y0:cy1 - Y0, cx0 - X0:cx1 - X0]
+        return mask
 
     def _recover_missing_hands(self, rgb, out):
         """Second pass: for each wrist with no hand assigned, search a zoomed crop around it."""
@@ -171,19 +207,25 @@ class Detector:
         torso = float(np.linalg.norm((px[11] + px[12]) / 2 - (px[23] + px[24]) / 2))
         if torso < 10:
             return
-        for side, wrist_i, index_i in (("left_hand", 15, 19), ("right_hand", 16, 20)):
+        jobs = []
+        for k, (side, wrist_i, index_i) in enumerate((("left_hand", 15, 19), ("right_hand", 16, 20))):
             if getattr(out, side) is not None or out.pose[wrist_i, 2] < 0.3:
                 continue
-            hand_px = self._detect_hand_in_crop(rgb, px[wrist_i], px[index_i], torso)
+            jobs.append((side, self._pool.submit(self._detect_hand_in_crop, self.hand_crops[k], rgb,
+                                                 px[wrist_i], px[index_i], torso)))
+        for side, job in jobs:  # collected in left, right order so results are deterministic
+            hand_px = job.result()
             if hand_px is not None:
                 setattr(out, side, hand_px / h)  # pixels -> frame-height units
                 out.hands_px.append(hand_px)
                 self.crop_recoveries += 1
 
     def close(self):
+        self._pool.shutdown(wait=True)
         self.pose.close()
         self.hands.close()
-        self.hand_crop.close()
+        for hc in self.hand_crops:
+            hc.close()
         if self.segmenter is not None:
             self.segmenter.close()
 
