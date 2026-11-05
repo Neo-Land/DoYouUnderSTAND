@@ -77,6 +77,9 @@ def main():
     cap = open_capture(args, cam_cfg)
     mirror = cam_cfg.get("mirror", True) and not args.video
     debug = args.debug or bundle is None
+    # Same cap as extraction: frames taller than this are shrunk, so the models see what they were
+    # trained on and phone clips (1080x1920) don't run at a third of the speed.
+    max_height = int(cfg["extraction"].get("max_height", 720))
     detector = Detector(segmentation=True)
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
 
@@ -87,6 +90,9 @@ def main():
             ok, frame = cap.read()
             if not ok:
                 break
+            if frame.shape[0] > max_height:
+                s = max_height / frame.shape[0]
+                frame = cv2.resize(frame, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
             if mirror:
                 frame = cv2.flip(frame, 1)
             now = time.perf_counter()

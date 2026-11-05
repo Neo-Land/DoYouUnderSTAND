@@ -115,6 +115,8 @@ python app.py --camera 1 --no-sound --debug
 
 Keys: `q` quit, `d` skeleton overlay, `m` mute.
 
+Frames taller than `extraction.max_height` (720 px) are shrunk first, the same as during extraction, so phone clips (1080×1920) run at normal speed and the models see what they were trained on.
+
 ## Assets (not included)
 
 Stand images and sounds aren't part of this repo; they stay local and are git-ignored.
