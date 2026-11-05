@@ -18,7 +18,7 @@ import numpy as np
 
 from dyu.config import load_config, resolve
 from dyu.effects import SoundPlayer, StandRenderer
-from dyu.features import FEATURE_DIM, featurize
+from dyu.features import FEATURE_DIM, body_in_frame, featurize
 from dyu.landmarks import Detector, draw_landmarks
 from dyu.smoothing import PoseSmoother
 
@@ -102,7 +102,11 @@ def main():
             res = detector.process(frame, (now - t0) * 1000.0)
 
             label, prob = None, 0.0
-            if bundle is not None and res.pose is not None:
+            # Only classify when the body is framed like the training clips (shoulders, hips and
+            # knees in view). A close-up upper body is unlike any training frame, and the model
+            # would still name a pose for it with high confidence.
+            framed = res.pose is not None and body_in_frame(res.pose, frame.shape[1] / frame.shape[0])
+            if bundle is not None and framed:
                 proba = bundle["model"].predict_proba([featurize(res.pose, res.left_hand, res.right_hand)])[0]
                 i = int(np.argmax(proba))
                 label, prob = bundle["labels"][i], float(proba[i])
@@ -123,6 +127,8 @@ def main():
                 put_text(out, s.get("pose", ""), (20, 80), 0.6)
             elif res.pose is None:
                 put_text(out, "Step into frame (whole body)", (20, 45), 0.8, (120, 200, 255))
+            elif not framed:
+                put_text(out, "Step back: show yourself at least head to knees", (20, 45), 0.8, (120, 200, 255))
             if debug and label:
                 put_text(out, f"frame guess: {label} {prob:.2f}", (20, out.shape[0] - 50), 0.6)
             put_text(out, f"{fps:4.1f} fps   [q] quit  [d] skeleton  [m] mute"

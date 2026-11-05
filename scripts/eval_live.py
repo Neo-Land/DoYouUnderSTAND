@@ -8,8 +8,8 @@ Usage:
 Step 1 (slow, cached): every frame of every clip goes through the app's Detector (with the
 wrist-crop fallback) and the raw landmarks are saved to data/live_frames.csv.
 Step 2 (fast): each clip is scored by a model trained on the OTHER sessions (leave-one-session-out,
-like scripts/train.py), and the per-frame predictions go through PoseSmoother with the
-config.yaml `recognition` settings, exactly as in app.py.
+like scripts/train.py), frames failing the app's body_in_frame check are skipped, and the per-frame
+predictions go through PoseSmoother with the config.yaml `recognition` settings, exactly as in app.py.
 
 Reported per clip:
   frame acc  per-frame classifier accuracy on the held part of the clip (trim_fraction cut off)
@@ -31,7 +31,7 @@ import pandas as pd  # noqa: E402
 import train  # noqa: E402  (scripts/train.py: same features and candidate models)
 from dyu.clips import is_video, parse_clip_name  # noqa: E402
 from dyu.config import load_config, resolve  # noqa: E402
-from dyu.features import RAW_COLUMNS, raw_to_row  # noqa: E402
+from dyu.features import RAW_COLUMNS, body_in_frame, raw_to_row, row_to_raw  # noqa: E402
 from dyu.smoothing import PoseSmoother  # noqa: E402
 
 CACHE = "data/live_frames.csv"
@@ -118,7 +118,23 @@ def holdout_probs(train_df, frames, model_name="logistic_regression", fit=None):
         te = (frames.session == held).to_numpy()
         probs[te] = m.predict_proba(F[te])
     probs[frames.has_pose.to_numpy() == 0] = np.nan
+    probs[~framed_mask(frames)] = np.nan  # the app skips frames where the body isn't framed
     return probs, classes
+
+
+def framed_mask(frames):
+    """Per frame: does the body pass the app's body_in_frame check (shoulders, hips, knees in view)?"""
+    import cv2
+
+    videos_dir = resolve(load_config()["extraction"]["videos_dir"])
+    aspect = {}
+    for v in frames.video.unique():
+        cap = cv2.VideoCapture(str(videos_dir / v))
+        aspect[v] = cap.get(cv2.CAP_PROP_FRAME_WIDTH) / max(1.0, cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        cap.release()
+    raw = frames[RAW_COLUMNS].to_numpy(dtype=np.float32)
+    return np.array([has and body_in_frame(row_to_raw(r)[0], aspect[v])
+                     for r, v, has in zip(raw, frames.video.to_numpy(), frames.has_pose.to_numpy())])
 
 
 # ---------------------------------------------------------------- step 3: smoothing + metrics

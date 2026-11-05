@@ -91,6 +91,26 @@ def featurize(pose, left_hand, right_hand):
     return np.concatenate(parts).astype(np.float32)
 
 
+L_KNEE, R_KNEE = 25, 26
+# Landmarks that were inside the frame in every training frame. If any is outside, the person is
+# framed tighter than anything the classifier has seen (e.g. a close laptop camera showing only the
+# upper body) and its prediction is meaningless, so the app doesn't classify that frame.
+FRAMING_POINTS = (L_SHOULDER, R_SHOULDER, L_HIP, R_HIP, L_KNEE, R_KNEE)
+
+
+def body_in_frame(pose, aspect, margin=0.02):
+    """True if shoulders, hips and knees all lie inside the frame.
+
+    `pose` is a raw (33, 3) frame in frame-height units, so x runs 0..aspect (width / height)
+    and y runs 0..1. `margin` allows points this far past the edge (MediaPipe's estimates for
+    joints right at the border can land slightly outside).
+    """
+    pts = np.asarray(pose)[list(FRAMING_POINTS), :2]
+    x_ok = (pts[:, 0] >= -margin) & (pts[:, 0] <= aspect + margin)
+    y_ok = (pts[:, 1] >= -margin) & (pts[:, 1] <= 1 + margin)
+    return bool(np.all(x_ok & y_ok))
+
+
 def flip_raw(pose, left_hand, right_hand):
     """Mirror a raw frame horizontally.
 

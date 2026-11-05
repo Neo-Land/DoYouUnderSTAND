@@ -3,6 +3,30 @@
 Experiments on the JoJo pose classifier, newest first. All scores are leave-one-session-out
 (3 sessions, 2,735 frames, 7 classes, one person) unless noted.
 
+## 2026-11-05: First webcam test; "Step back" framing guard
+
+**Problem.** First live run on the MacBook: Gold Experience appeared immediately, whatever the pose.
+The camera was close (and the iPhone's Continuity Camera kept zooming in), so only the upper body
+was in view. In every training frame, shoulders, hips and knees are all inside the frame (100% for
+every class; ankles often aren't). A head-to-waist view is unlike anything the classifier has seen,
+and logistic regression still names a class with high confidence. Reproduced by cropping clips to
+head-to-waist: none_s1, kira_s2, jotaro_s2 and bucciarati_s2 were all called **Giorno on 100% of
+frames**.
+
+**Change.** `dyu.features.body_in_frame()` checks that shoulders, hips and knees lie inside the
+frame (2% margin). `app.py` only classifies frames that pass and otherwise shows "Step back: show
+yourself at least head to knees". `eval_live.py` applies the same check. Unit-tested.
+
+**Effect.** 99.9% of training frames and of the live-replay frames pass (3 and 5 `none` frames
+fail), so live metrics are unchanged (25% false Stand time, 96% on-time, 18/18 triggered). All
+cropped close-up frames are now skipped instead of summoning Gold Experience.
+
+**Also from this test:** `app.py --video` now shrinks frames to 720 px tall like extraction (phone
+clips ran at ~7 fps at 1080×1920; now ~15 fps), and `setup.sh` is executable on macOS.
+
+**Still open.** Not yet confirmed on the live webcam. The guard catches the obvious failure, but the
+model has still only seen one person, one room and full-body framing from about 2–3 m away.
+
 ## 2026-11-04: App speed 5 → 20 fps; Stand placement for webcam frames
 
 **Speed problem.** Timing the app's per-frame work on the clips padded to 1280×720 (webcam size)

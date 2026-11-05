@@ -115,6 +115,10 @@ python app.py --camera 1 --no-sound --debug
 
 Keys: `q` quit, `d` skeleton overlay, `m` mute.
 
+Stand back until you're in view at least from head to knees, like the training clips. If your shoulders, hips or knees are out of frame, the app doesn't classify and shows "Step back" instead: a close-up upper body is unlike anything the model trained on, and it would confidently name a pose anyway (it called every head-to-waist frame Giorno).
+
+On a Mac, `--camera 1` picks another camera if your iPhone (Continuity Camera) opens instead of the built-in one.
+
 Frames taller than `extraction.max_height` (720 px) are shrunk first, the same as during extraction, so phone clips (1080×1920) run at normal speed and the models see what they were trained on.
 
 ## Assets (not included)
