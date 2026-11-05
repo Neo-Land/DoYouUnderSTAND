@@ -3,6 +3,41 @@
 Experiments on the JoJo pose classifier, newest first. All scores are leave-one-session-out
 (3 sessions, 2,735 frames, 7 classes, one person) unless noted.
 
+## 2026-11-05: ASL word signs, step 1–2: landmarks and a baseline
+
+**Data.** 100 everyday signs from ASL Citizen (list in `asl/config.py`, videos pulled from the zip
+by `asl/extract_asl_citizen.py`): 3,130 videos, 52 signers, official split: train 1,491 videos / 33
+signers, val 378 / 5, test 1,261 / 11. Videos are mostly 640×480 at 30 fps, median 2.4 s.
+
+**Landmarks** (`scripts/extract_signs.py`). The JoJo app's Detector on every frame, 8 processes, each
+reusing one detector with a 10 s timestamp gap between videos. 241,518 frames in 35 min. Body found
+in 100% of frames; a hand in 44.5%. That isn't missed detections: checked on a median video (MORE),
+hands are found exactly while the signer signs, and they're below the frame before and after.
+Saved per video in `data/asl_signs/` (git-ignored: landmarks derived from ASL Citizen must not be
+published).
+
+**Features** (`dyu/signs.py`). Per frame: 11 upper-body points and both hands (21 points each) in
+body coordinates (centred on the shoulders, divided by shoulder width), hand-present flags, wrist
+speed: 110 numbers. Unlike the JoJo features, hands are NOT centred on their own wrist, so location
+relative to the face is kept. Each video is trimmed to the frames with a visible hand (±3) and
+resampled to 32 frames. Training adds mirrored copies. 5 unit tests.
+
+**Baseline** (`scripts/train_signs.py`). Logistic regression on the flattened 32×110 sequence,
+standardized. C picked on val (0.003–0.1; 0.1 best at 73.5% top-1, the top of the range tried), then
+refit on train + val and scored once on test.
+
+| | Top-1 | Top-5 |
+| --- | --- | --- |
+| Chance | 1.0% | 5.0% |
+| Val (5 signers) | 73.5% | 88.4% |
+| **Test (11 unseen signers)** | **70.1%** | **89.5%** |
+
+Hardest on test: MUSIC 33%, MOVIE1 41%, COME, LOVE, HURT, NEED, THANKYOU, POWER 42%. Easiest:
+PLAY 93%, HEARING 93%, WHEN, WORKOUT, WATER 92%.
+
+**Next.** A GRU over the 32-frame sequence (motion and order matter, which a flat linear model only
+partly captures); also try a larger C since 0.1 was the edge of the grid. Then a live word-sign mode.
+
 ## 2026-11-05: Webcam session, dismiss pose, hold to summon / stay until dismissed
 
 **Data.** Session s4 is the MacBook webcam: one clip per pose plus `none_s4` (everyday movement,

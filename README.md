@@ -22,7 +22,7 @@ Strike a JoJo pose in front of your webcam and that character's Stand appears be
 | Stand effects: art behind the user, bottom fade, per-Stand placement, kept on screen, ゴゴゴ text | Done; ~20 fps at 1280×720 |
 | Hold to summon, stay until dismissed | Done: 0 false summons during normal movement on held-out sessions |
 | Tested live on a MacBook webcam | Done |
-| ASL mode (word signs, ASL Citizen) | Next |
+| ASL word signs (ASL Citizen, 100 signs) | In progress: baseline 70.1% top-1 / 89.5% top-5 on unseen signers |
 
 ## How it works
 
@@ -68,6 +68,36 @@ Per-frame accuracy isn't what a user sees: a Stand only appears after a pose win
 | **Hold to summon, stay until dismissed** (0.4, 9 of 15, 1.5 s hold), 5 sessions | **0%** (0 false summons) | 85% | **24 / 24** | 1.8 s | 2 / 2, 1.4 s |
 
 A wrong Stand never appeared in any clip. "Correct Stand while posing" is lower in the last row because the first 1.5 s of every pose now count as not yet showing, and a few older phone clips (Giorno s1/s3, Josuke s1) take 6–8 s to summon. Settings were picked on the same clips they're scored on, so expect live numbers to be a bit worse.
+
+## ASL word signs
+
+The second half of the project recognizes isolated ASL signs, using the same landmark pipeline. Data: a 100-sign subset of **ASL Citizen** (Microsoft Research; Desai et al., NeurIPS 2023 Datasets and Benchmarks): 3,130 videos from 52 signers, with the dataset's official split, so **every test signer is someone the model never saw**.
+
+```
+sign video
+  -> same MediaPipe detector as the JoJo app (body + both hands, wrist-crop fallback), every frame
+  -> per frame: 11 upper-body points + both hands (21 points each) in body coordinates
+     (centred on the shoulders, scaled by shoulder width, so a hand at the chin and at the forehead differ),
+     hand-present flags, wrist speed
+  -> keep only the frames where a hand is visible (signers rest their hands out of frame before and after)
+  -> resample to 32 frames
+  -> classifier, trained with left/right mirrored copies for left-handed signers
+```
+
+| Model | Test top-1 | Test top-5 | Notes |
+| --- | --- | --- | --- |
+| Chance | 1.0% | 5.0% | 100 signs |
+| Logistic regression on the 32-frame sequence | **70.1%** | **89.5%** | regularization picked on the 5 validation signers (73.5% top-1) |
+
+Test set: 1,261 videos from 11 signers. Easiest signs: PLAY, HEARING, WHEN, WORKOUT, WATER (92–93%). Hardest: MUSIC (33%), MOVIE, COME, LOVE, HURT, NEED, THANKYOU, POWER (41–42%). Per-sign numbers: `reports/signs_baseline_per_sign.csv`.
+
+```powershell
+python asl/extract_asl_citizen.py      # pull the 100 signs' videos out of the ASL Citizen zip
+python scripts/extract_signs.py        # landmarks for every frame (~35 min on 8 processes)
+python scripts/train_signs.py          # baseline, scored on the test signers
+```
+
+**License.** ASL Citizen is for non-commercial research. The videos, the extracted landmarks and any model trained on them stay on my machine (`datasets/`, `data/`, `models/` are git-ignored). This repo publishes only code and accuracy numbers, and no dataset frames appear anywhere.
 
 ## Setup (Windows, Python 3.11)
 
@@ -174,7 +204,7 @@ The models run on a small thread pool: MediaPipe releases Python's lock, so pose
 
 ## Roadmap
 
-- ASL mode: 100 isolated signs from Microsoft Research's ASL Citizen dataset, signer-independent evaluation, GRU temporal model, top-5 predictions in the app.
+- ASL word signs: a sequence model (GRU) to beat the 70.1% baseline, then a live word-sign mode in the app showing top-5 predictions; later, a larger vocabulary.
 - FastAPI inference endpoint with latency measurements.
 
 JoJo's Bizarre Adventure characters and Stands belong to Hirohiko Araki / Shueisha. This is a non-commercial fan project.

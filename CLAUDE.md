@@ -37,6 +37,9 @@ part most relevant to the role, so it should end up solid, not a token feature.
 - `docs/DEVLOG.md`    — dated log of experiments and before/after numbers
 - `asl/`              — legacy ASL fingerspelling code + ASL Citizen subset extraction (see Stack)
 - `scripts/train_asl.ps1` — legacy fingerspelling pipeline (runs asl/; needs porting)
+- `dyu/signs.py`     — sign features: body-relative hands + upper body per frame, trim, resample
+- `scripts/extract_signs.py` — ASL Citizen subset videos -> per-frame landmarks in data/asl_signs/
+- `scripts/train_signs.py`   — word-sign classifier on the official split (unseen test signers)
 - `assets/stands/`, `assets/sounds/` — user-supplied, gitignored
 - `data/`, `models/`, `datasets/` — generated or downloaded; gitignored
 
@@ -86,9 +89,10 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 ### Part 2 — ASL
 5. [ ] Fingerspelling baseline: Kaggle ASL Alphabet via scripts/train_asl.ps1, then add a few
        hundred of Neo's own webcam samples per letter (dataset is one signer)
-6. [ ] Word signs on ASL Citizen (downloaded to datasets/asl_citizen/): pick 50–100 common signs,
-       extract landmark sequences from videos, train a sequence model (LSTM/GRU), report accuracy
-       on the user-independent test split (unseen signers)
+6. [ ] Word signs on ASL Citizen, 100 signs (asl/config.py ASL_WORD_SIGNS). Done: landmarks for all
+       3,130 videos (scripts/extract_signs.py -> data/asl_signs/), features in dyu/signs.py, baseline
+       logistic regression 70.1% top-1 / 89.5% top-5 on unseen test signers (scripts/train_signs.py).
+       Next: GRU sequence model, then a bigger vocabulary
 7. [ ] Add word-sign mode to app.py alongside fingerspelling
 
 ### Ship
