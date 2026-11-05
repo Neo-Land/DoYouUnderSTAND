@@ -63,7 +63,7 @@ def main():
     args = ap.parse_args()
 
     videos_dir, out_path = resolve(args.videos), resolve(args.out)
-    known = set(cfg["stands"]) | {"none"}
+    known = set(cfg["stands"]) | {"none", "dismiss"}
     videos = sorted(p for p in videos_dir.iterdir() if p.is_file() and is_video(p)) if videos_dir.exists() else []
     if not videos:
         sys.exit(f"No videos found in {videos_dir}. Put clips like jotaro_s1.mp4 there.")

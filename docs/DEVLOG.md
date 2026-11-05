@@ -3,6 +3,53 @@
 Experiments on the JoJo pose classifier, newest first. All scores are leave-one-session-out
 (3 sessions, 2,735 frames, 7 classes, one person) unless noted.
 
+## 2026-11-05: Webcam session, dismiss pose, hold to summon / stay until dismissed
+
+**Data.** Session s4 is the MacBook webcam: one clip per pose plus `none_s4` (everyday movement,
+25 s). The new `dismiss` class is both arms up in a "Y", recorded twice (s4, and s5 in another
+room). Clips were trimmed (last 2.5 s: reaching for the camera; first 2 s for jotaro, kira and diego).
+Now 8 classes, 3,931 frames, 30 clips, 5 sessions.
+
+**Model** (leave-one-session-out):
+
+| | Sessions | Best model | Accuracy | Macro-F1 | Held-out webcam session |
+| --- | --- | --- | --- | --- | --- |
+| Before | 3 | logistic regression | 91.2% | 0.927 | n/a |
+| + 5 webcam clips | 4 | random forest | 88.9% | 0.900 | 83% (LR 72%) |
+| + kira/diego webcam clips | 4 | random forest | 91.4% | 0.924 | 87% |
+| + dismiss (s4, s5) | 5 | random forest | 91.1% | 0.921 | s4 90%, s5 96% |
+
+A model trained on the phone sessions alone scored 72–83% on the webcam: different camera, room and
+distance. Random forest now beats logistic regression. Dismiss: recall 0.98, never confused with a
+Stand pose; 50 `none` frames are read as dismiss (stretching), which only matters while a Stand is up.
+Weakest: Giorno (recall 0.72, 126 frames read as `none`, mostly phone sessions s1/s3) and `none`
+(84 frames read as Bucciarati).
+
+**New logic** (`dyu/smoothing.py`, rewritten). A pose "wins" while it holds `min_votes` of the
+last `window` votes (frames under `threshold` confidence vote `none`). A Stand pose that keeps
+winning for `hold_seconds` summons its Stand (or switches to it); the Stand then stays through
+normal movement until `dismiss` keeps winning for `dismiss_seconds`, or nobody is framed for
+`absent_seconds`. The app shows a hold bar while a pose is building up. 6 new unit tests.
+
+**Measured** with `eval_live.py` (now reports false summons and dismiss time; dismiss clips start
+with a Stand showing). First try with the old vote settings (18 of 20, threshold 0.4, hold 1.5 s):
+0 false summons, but slow — josuke_s1 took 6.7 s even at 100% frame accuracy, and bucciarati_s3
+never summoned, because random-forest confidences are less extreme than logistic regression's.
+`tune_smoothing.py` searched 192 combinations; 33 summon all 24 pose clips, dismiss both dismiss
+clips and make 0 false summons. Chosen: threshold 0.4, 9 of 15 frames, hold 1.5 s (the user asked
+for 1–2 s; hold 1.0 s scored slightly higher but is less safe against accidental summons live).
+
+| | Vote + linger (3 sessions) | Hold + dismiss (5 sessions) |
+| --- | --- | --- |
+| Stand during normal movement | 25% | 0% (0 false summons in 1.6 min) |
+| Pose clips that summon | 18 / 18 | 24 / 24 |
+| Median time to summon | 0.6 s | 1.8 s |
+| Correct Stand while posing | 96% | 85% (first 1.5 s count as not showing) |
+| Dismiss | none | 2 / 2, median 1.4 s |
+
+**Still weak.** Giorno s1/s3 take 6–8 s and Josuke s1 about 6 s to summon. Settings were picked on
+the same clips they're scored on. Not yet tried live with the new logic.
+
 ## 2026-11-05: First webcam test; "Step back" framing guard
 
 **Problem.** First live run on the MacBook: Gold Experience appeared immediately, whatever the pose.

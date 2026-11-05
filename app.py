@@ -69,7 +69,7 @@ def main():
     stands = cfg["stands"]
 
     bundle = load_model(cfg["training"]["model_path"])
-    smoother = PoseSmoother(rec["window"], rec["min_votes"], rec["threshold"], rec["linger_seconds"])
+    smoother = PoseSmoother.from_config(rec)
     renderer = StandRenderer(stands, fx)
     sound = SoundPlayer({k: v.get("sound") for k, v in stands.items()}, fx.get("default_sound"),
                         fx.get("volume", 0.8), enabled=fx.get("sound", True) and not args.no_sound)
@@ -129,6 +129,15 @@ def main():
                 put_text(out, "Step into frame (whole body)", (20, 45), 0.8, (120, 200, 255))
             elif not framed:
                 put_text(out, "Step back: show yourself at least head to knees", (20, 45), 0.8, (120, 200, 255))
+            # Hold bar: how long the current pose still has to be held to summon (or dismiss).
+            holding, frac = smoother.progress(now)
+            if holding is not None and frac > 0:
+                name = "Dismissing" if holding == smoother.dismiss else stands.get(holding, {}).get("stand", holding)
+                y = 115 if active else 80
+                x0, x1 = 20, 20 + int(260 * frac)
+                cv2.rectangle(out, (20, y), (280, y + 12), (40, 40, 40), -1)
+                cv2.rectangle(out, (x0, y), (x1, y + 12), (230, 120, 255), -1)
+                put_text(out, name, (290, y + 12), 0.5)
             if debug and label:
                 put_text(out, f"frame guess: {label} {prob:.2f}", (20, out.shape[0] - 50), 0.6)
             put_text(out, f"{fps:4.1f} fps   [q] quit  [d] skeleton  [m] mute"

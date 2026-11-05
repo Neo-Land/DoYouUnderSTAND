@@ -80,19 +80,67 @@ def test_parse_clip_name(name, expected):
     assert parse_clip_name(name) == expected
 
 
-def test_smoother_activates_lingers_and_switches():
-    s = PoseSmoother(window=5, min_votes=3, threshold=0.6, linger_seconds=1.0)
+def feed(s, label, prob, t0, seconds, fps=10):
+    """Send `label` for `seconds` at `fps`; return (last output, time after)."""
+    out, t = None, t0
+    for _ in range(int(round(seconds * fps))):
+        out = s.update(label, prob, t)
+        t += 1 / fps
+    return out, t
+
+
+def smoother():
+    return PoseSmoother(window=5, min_votes=4, threshold=0.5, hold_seconds=1.0,
+                        dismiss_seconds=0.5, absent_seconds=2.0)
+
+
+def test_smoother_needs_the_pose_held_before_summoning():
+    s = smoother()
+    out, t = feed(s, "jotaro", 0.9, 0.0, 1.0)      # winner after 4 frames, held ~0.6 s: not yet
+    assert out is None
+    out, t = feed(s, "jotaro", 0.9, t, 0.6)
+    assert out == "jotaro"
+
+
+def test_short_bursts_never_summon():
+    s = smoother()
     t = 0.0
-    for _ in range(2):
-        assert s.update("jotaro", 0.9, t) is None
-        t += 0.1
-    assert s.update("jotaro", 0.9, t) == "jotaro"
-    for _ in range(5):            # low confidence -> votes "none", but still lingering
-        t += 0.1
-        assert s.update("jotaro", 0.3, t) == "jotaro"
-    t += 1.5
-    assert s.update(None, 0.0, t) is None
-    for _ in range(3):
-        t += 0.1
-        out = s.update("kira", 0.95, t)
+    for _ in range(5):                               # 0.8 s of a pose, then normal movement
+        out, t = feed(s, "giorno", 0.9, t, 0.8)
+        out, t = feed(s, "none", 0.9, t, 0.8)
+        assert out is None
+
+
+def test_stand_stays_through_normal_movement_until_dismissed():
+    s = smoother()
+    _, t = feed(s, "kira", 0.9, 0.0, 2.0)
+    out, t = feed(s, "none", 0.9, t, 5.0)            # moving around normally: Stand stays
     assert out == "kira"
+    out, t = feed(s, "kira", 0.2, t, 1.0)            # low confidence: stays too
+    assert out == "kira"
+    out, t = feed(s, "dismiss", 0.9, t, 0.6)         # dismiss winning for < 0.5 s: still there
+    assert out == "kira"
+    out, t = feed(s, "dismiss", 0.9, t, 0.5)
+    assert out is None
+
+
+def test_holding_another_pose_switches_stand():
+    s = smoother()
+    _, t = feed(s, "kira", 0.9, 0.0, 2.0)
+    out, t = feed(s, "diego", 0.9, t, 2.0)
+    assert out == "diego"
+
+
+def test_stand_leaves_when_nobody_is_in_frame():
+    s = smoother()
+    _, t = feed(s, "josuke", 0.9, 0.0, 2.0)
+    out, t = feed(s, None, 0.0, t, 1.5)              # briefly out of frame: stays
+    assert out == "josuke"
+    out, t = feed(s, None, 0.0, t, 1.0)              # gone longer than absent_seconds
+    assert out is None
+
+
+def test_dismiss_alone_never_shows_a_stand():
+    s = smoother()
+    out, _ = feed(s, "dismiss", 0.9, 0.0, 3.0)
+    assert out is None

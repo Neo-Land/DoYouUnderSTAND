@@ -18,14 +18,16 @@ training:
   model_path: models/pose_classifier.joblib
   reports_dir: reports
 
-# Tuned with scripts/tune_smoothing.py on held-out sessions (2026-11-04): a long window with a strong
-# majority filters short bursts during normal movement; a low threshold lets weaker but consistent
-# poses (giorno_s2 sits at ~0.42) still vote; a short linger stops brief false hits from lingering.
+# Hold a pose to summon its Stand; it stays until you hold the dismiss pose (arms up in a Y).
+# A pose "wins" while it has min_votes of the last `window` frames (frames below `threshold`
+# confidence vote "none"). Tune with scripts/eval_live.py + scripts/tune_smoothing.py.
 recognition:
-  threshold: 0.4      # minimum confidence for a frame to count
-  window: 20          # frames in the voting window (~0.7 s at 30 fps)
-  min_votes: 18       # frames out of the window needed to summon a Stand
-  linger_seconds: 0.3 # how long a Stand stays after you drop the pose
+  threshold: 0.4        # minimum confidence for a frame to vote for its pose
+  window: 15            # frames in the voting window (~0.5 s at 30 fps)
+  min_votes: 9          # votes out of the window a pose needs to be winning
+  hold_seconds: 1.5     # a Stand pose must keep winning this long to summon (or switch to) its Stand
+  dismiss_seconds: 1.0  # the dismiss pose must keep winning this long to send the Stand away
+  absent_seconds: 5.0   # the Stand also leaves after this long with nobody framed in view
 
 effects:
   fade_seconds: 0.35

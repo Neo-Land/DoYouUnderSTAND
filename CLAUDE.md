@@ -43,7 +43,9 @@ part most relevant to the role, so it should end up solid, not a token feature.
 ## Poses (label → Stand)
 jotaro → Star Platinum · giorno → Gold Experience · josuke → Crazy Diamond ·
 bucciarati → Sticky Fingers · diego → Scary Monsters · kira → Killer Queen ·
-plus `none` (normal movement, not posing). Clips are named `<pose>_s<session>`, 3 sessions each.
+plus `none` (normal movement, not posing) and `dismiss` (both arms up in a Y: sends the Stand away).
+Clips are named `<pose>_s<session>`: s1–s3 phone, s4 MacBook webcam, s5 dismiss only.
+Hold a pose ~1.5 s to summon; the Stand stays until dismiss is held ~1 s (dyu/smoothing.py).
 
 ## Commands (run from the repo root, venv active)
 - Setup (Windows): `./setup.ps1`  (Mac/Linux: `./setup.sh`)
@@ -78,8 +80,8 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
        person mask from the selfie segmenter on a body crop (Pose Landmarker's float mask crashes
        on 0.10.35). App ~20 fps at 1280x720 (models on a thread pool). Placement tuned for 16:9 with
        `python scripts/render_stand_previews.py --landscape`; confirm on a live webcam
-4. [ ] False triggers: smoother tuned with scripts/eval_live.py + scripts/tune_smoothing.py,
-       42% → 25% of normal movement shows a Stand (2026-11-04). Rest needs more varied `none` clips
+4. [x] Hold to summon / stay until dismissed (2026-11-05): 0 false summons, 24/24 pose clips summon
+       (median 1.8 s), dismiss 2/2. Tune with scripts/eval_live.py + scripts/tune_smoothing.py
 
 ### Part 2 — ASL
 5. [ ] Fingerspelling baseline: Kaggle ASL Alphabet via scripts/train_asl.ps1, then add a few

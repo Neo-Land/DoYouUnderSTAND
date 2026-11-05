@@ -11,15 +11,18 @@ Strike a JoJo pose in front of your webcam and that character's Stand appears be
 | The Bestial Low Crouch | Diego Brando | Scary Monsters |
 | The L-Shaped Hand Frame | Yoshikage Kira | Killer Queen |
 
+**How to use it:** hold a pose for about 1.5 seconds and its Stand appears. It stays while you move around, until you hold the **dismiss pose** (both arms up in a "Y") for about a second. Holding a different Stand's pose switches Stands, and the Stand also leaves if you're out of view for 5 seconds.
+
 ## Progress
 
 | Part | Status |
 | --- | --- |
-| Record 6 poses + `none`, 3 sessions each | Done |
-| Pose classifier, leave-one-session-out | Done: 91.2% accuracy, macro-F1 0.927 (see [Results](#results)) |
-| Stand effects: art behind the user, bottom fade, per-Stand placement, ゴゴゴ text | Done; ~20 fps at 1280×720; final check on a live webcam |
-| Fewer false triggers during normal movement (`none`) | Improved 42% → 25% by tuning smoothing; needs more varied `none` clips |
-| ASL mode (word signs, ASL Citizen) | Planned |
+| Record 6 poses + `none` + `dismiss` (3 phone sessions + 2 webcam sessions) | Done |
+| Pose classifier, leave-one-session-out | Done: 91.1% accuracy, macro-F1 0.921 over 5 sessions (see [Results](#results)) |
+| Stand effects: art behind the user, bottom fade, per-Stand placement, kept on screen, ゴゴゴ text | Done; ~20 fps at 1280×720 |
+| Hold to summon, stay until dismissed | Done: 0 false summons during normal movement on held-out sessions |
+| Tested live on a MacBook webcam | Done |
+| ASL mode (word signs, ASL Citizen) | Next |
 
 ## How it works
 
@@ -27,10 +30,11 @@ Strike a JoJo pose in front of your webcam and that character's Stand appears be
 video/webcam frame
   -> MediaPipe Pose Landmarker (33 body points) + Hand Landmarker (21 points per hand), run in parallel
   -> selfie segmenter on a square crop around the body (person mask), in parallel with the wrist-crop hand pass
+  -> framing check: shoulders, hips and knees in view, otherwise "Step back" and no prediction
   -> features: body centred on hips and scaled by torso length; hands centred on wrist, scaled by hand size
   -> classifier (logistic regression / random forest, picked by held-out score)
-  -> smoothing: majority vote over 10 frames + confidence threshold + 1.5 s linger
-  -> render: Stand image (bottom faded out) drawn into the frame, then the person mask puts you back in front of it
+  -> summon/dismiss logic: a pose must keep winning a vote over recent frames for 1.5 s; the Stand stays until dismissed
+  -> render: Stand image (bottom faded out, kept on screen) drawn into the frame, then the person mask puts you back in front of it
 ```
 
 Design choices worth knowing:
@@ -39,30 +43,31 @@ Design choices worth knowing:
 - **Mirror augmentation.** Every training frame is also flipped left/right, so it works whether or not the camera mirrors the image.
 - **Hands matched to wrists**, not to MediaPipe's left/right label, which flips with mirroring.
 - **Wrist-crop fallback for missed hands.** In full-body shots a hand is only a few dozen pixels wide, so the full-frame hand detector often misses it. For any wrist the pose model found but no hand was matched to, the app crops a square around that hand, enlarges it to 256 px and runs a second hand detector on it. A detected hand is rejected if its wrist is far from the pose wrist.
+- **Framing check.** Every training frame shows at least head to knees. A close-up upper body is unlike anything the model has seen, and it would still confidently name a pose (it called every head-to-waist frame Giorno), so those frames aren't classified.
 
 ## Results
 
-7 classes (6 poses + `none`), 2,735 frames from 21 clips, one person, 3 recording sessions. Scores are leave-one-session-out: each session is held out in turn and predicted by a model trained on the other two.
+8 classes (6 poses + `none` + `dismiss`), 3,931 frames from 30 clips, one person, 5 recording sessions: 3 on a phone and 2 on a MacBook webcam. Scores are leave-one-session-out: each session is held out in turn and predicted by a model trained on the others.
 
-| Version | Accuracy | Macro-F1 | Kira recall | Kira → Bucciarati | none → Bucciarati |
-| --- | --- | --- | --- | --- | --- |
-| Baseline | 81.1% | 0.822 | 0.49 | 167 frames | 137 frames |
-| + wrist-crop hand fallback | **91.2%** | **0.927** | 0.98 | 7 frames | 131 frames |
+| Version | Sessions | Accuracy | Macro-F1 | Notes |
+| --- | --- | --- | --- | --- |
+| Baseline | 3 (phone) | 81.1% | 0.822 | Kira recall 0.49: 167 Kira frames read as Bucciarati |
+| + wrist-crop hand fallback | 3 (phone) | 91.2% | 0.927 | Kira recall 0.98; logistic regression |
+| + webcam clips and `dismiss` | 5 | **91.1%** | **0.921** | random forest; the webcam session alone: 90% |
 
-Both rows use logistic regression, which beat the random forest each time. Hands found in Kira and Bucciarati clips went from as low as 0–50% per clip to 99–100%. Diego, Jotaro and Josuke are at F1 1.00. The weakest class is now `none` (recall 0.74): normal movement still gets read as Bucciarati, mostly in one session. Experiment notes: [docs/DEVLOG.md](docs/DEVLOG.md).
-
-The Stand-effects work (bottom fade, per-Stand placement, new person mask) changes only rendering, not the landmarks or classifier, so these scores are unchanged.
+The third row is a harder test (more sessions, a second camera, an eighth class), so it isn't directly comparable with the second. A model trained only on the phone clips scored 72–83% on the webcam session, so recording on the actual webcam mattered. Jotaro (F1 1.00), Diego (0.99) and Josuke (0.97) are strongest; Giorno (recall 0.72, mostly read as `none`) and `none` itself (0.85) are weakest. The dismiss pose is recognized 98% of the time and is never mistaken for a Stand pose. Experiment notes: [docs/DEVLOG.md](docs/DEVLOG.md).
 
 ### Live behaviour
 
-Per-frame accuracy isn't what a user sees: the app votes over a window of frames before a Stand appears. `scripts/eval_live.py` replays every frame of every clip through the app's detector and smoother, each session scored by a model trained on the other two.
+Per-frame accuracy isn't what a user sees: a Stand only appears after a pose wins a vote over recent frames for long enough. `scripts/eval_live.py` replays every frame of every clip through the app's detector, framing check and summon/dismiss logic, each session scored by a model trained on the others.
 
-| Smoothing settings | Stand showing during normal movement | Correct Stand while posing | Pose clips that trigger | Time to trigger |
-| --- | --- | --- | --- | --- |
-| Before (threshold 0.6, 7 of 10 frames, 1.5 s linger) | 42% | 94% | 17 / 18 | 0.2 s |
-| Tuned (threshold 0.4, 18 of 20 frames, 0.3 s linger) | **25%** | **96%** | **18 / 18** | 0.6 s |
+| Logic | Stand showing during normal movement | Correct Stand while posing | Pose clips that summon | Time to summon | Dismiss |
+| --- | --- | --- | --- | --- | --- |
+| Vote + linger (threshold 0.6, 7 of 10 frames, 1.5 s linger), 3 sessions | 42% | 94% | 17 / 18 | 0.2 s | none |
+| Vote + linger, tuned (0.4, 18 of 20, 0.3 s), 3 sessions | 25% | 96% | 18 / 18 | 0.6 s | none |
+| **Hold to summon, stay until dismissed** (0.4, 9 of 15, 1.5 s hold), 5 sessions | **0%** (0 false summons) | 85% | **24 / 24** | 1.8 s | 2 / 2, 1.4 s |
 
-A wrong Stand never appeared during a pose clip. Most of the remaining false triggers come from one `none` clip where I'm texting with both hands at chest height, which the model confidently reads as Bucciarati because no other session contains texting. More varied `none` clips are the fix for that; no smoothing setting removes it.
+A wrong Stand never appeared in any clip. "Correct Stand while posing" is lower in the last row because the first 1.5 s of every pose now count as not yet showing, and a few older phone clips (Giorno s1/s3, Josuke s1) take 6–8 s to summon. Settings were picked on the same clips they're scored on, so expect live numbers to be a bit worse.
 
 ## Setup (Windows, Python 3.11)
 
@@ -83,6 +88,7 @@ Put videos in `data/videos/`, named `<pose>_s<session>`:
 jotaro_s1.mp4  jotaro_s2.mp4  jotaro_s3.mp4
 giorno_s1.mov  ...
 none_s1.mp4    none_s2.mp4    none_s3.mp4     <- normal movement, so Stands don't trigger randomly
+dismiss_s4.mp4 dismiss_s5.mp4                 <- the dismiss pose (both arms up in a "Y")
 ```
 
 - Whole body in frame, camera at chest height, 2-3 m away, 720p is plenty.
@@ -133,9 +139,10 @@ Missing files never crash the app: no image shows a labelled placeholder, no sou
 
 ## Tuning (`config.yaml`)
 
-- Stand flickers or triggers too easily: raise `min_votes` (or `window`) or `threshold`.
-- Stand is slow to appear: lower `min_votes` or `window`.
-- Find settings from data instead of guessing: `python scripts/eval_live.py` once (caches every frame's landmarks), then `python scripts/tune_smoothing.py` to grid-search `threshold` / `window` / `min_votes` / `linger_seconds` on held-out sessions.
+- Stand summons too easily, or by accident: raise `hold_seconds`, `min_votes` or `threshold`.
+- Stand is slow to appear: lower `hold_seconds` or `min_votes`.
+- Dismissing is too slow or too easy: `dismiss_seconds`. Leaving the frame removes the Stand after `absent_seconds`.
+- Find settings from data instead of guessing: `python scripts/eval_live.py` once (caches every frame's landmarks), then `python scripts/tune_smoothing.py` to grid-search `threshold` / `window` / `min_votes` / `hold_seconds` on held-out sessions, keeping only settings that summon every pose clip and dismiss every dismiss clip.
 - Stand in the wrong spot or size: `stand_scale`, `stand_offset_x`, `stand_offset_y` (globally, or per Stand with `scale`, `offset_x`, `offset_y`). Units are torso lengths; + x = screen right, − y = up.
 - Stand cut off at the top or sides when you stand close to the camera: `keep_in_frame: true` (default) shrinks a Stand to at most `stand_max_height` (95%) of the frame height and moves it fully on screen.
 - Bottom fade: `stand_fade_bottom` (0.25 = bottom quarter fades out, 0 = off), or per Stand with `fade_bottom`.
