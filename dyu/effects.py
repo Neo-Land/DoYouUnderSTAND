@@ -44,6 +44,27 @@ def fade_bottom(img, fraction):
     return out
 
 
+def fit_in_frame(x, y, w, h, frame_w, frame_h, max_height=0.95):
+    """Shrink and shift a sprite box (top-left x, y, size w x h) so the Stand stays on screen.
+
+    Placement is in torso lengths, so when the user stands close to the camera the Stand can grow
+    taller than the frame and its head leaves the top. This caps the height at `max_height` of the
+    frame (shrinking around the box's centre, keeping its aspect ratio), then moves the box down so
+    its top is on screen and sideways so it isn't cut off at the left or right edge. The bottom may
+    still run off the frame: that's where the image fades out anyway.
+    """
+    limit = max(20, int(frame_h * max_height))
+    if h > limit:
+        s = limit / h
+        cx, cy = x + w / 2, y + h / 2
+        w, h = max(20, int(w * s)), limit
+        x, y = int(cx - w / 2), int(cy - h / 2)
+    y = max(y, 0)
+    if w <= frame_w:
+        x = min(max(x, 0), frame_w - w)
+    return int(x), int(y), int(w), int(h)
+
+
 def blend_rgba(dst, src, x, y, opacity=1.0):
     """Alpha-blend BGRA `src` onto BGR `dst` in place, top-left corner at (x, y). Clips at edges."""
     H, W = dst.shape[:2]
@@ -233,11 +254,14 @@ class StandRenderer:
             if img is None:
                 img = self._placeholder(label, int(h * 0.6), h)
             w = max(20, int(img.shape[1] * h / img.shape[0]))
-            sprite = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
-            sprite = fade_bottom(sprite, float(scfg.get("fade_bottom", self.cfg.get("stand_fade_bottom", 0.25))))
             bob = math.sin(t * 2.0) * torso * 0.04  # Stands float
             x = int(cx + off_x * torso - w / 2)
             y = int(cy + off_y * torso + bob - h / 2)
+            if self.cfg.get("keep_in_frame", True):
+                x, y, w, h = fit_in_frame(x, y, w, h, frame.shape[1], frame.shape[0],
+                                          float(self.cfg.get("stand_max_height", 0.95)))
+            sprite = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
+            sprite = fade_bottom(sprite, float(scfg.get("fade_bottom", self.cfg.get("stand_fade_bottom", 0.25))))
             blend_rgba(layer, sprite, x, y, s["alpha"])
             boxes.append((x, y, x + w, y + h))
 

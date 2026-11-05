@@ -30,3 +30,17 @@ def test_fade_bottom_clears_last_row_and_keeps_top():
 def test_fade_bottom_off():
     img = sprite()
     assert fade_bottom(img, 0) is img
+
+
+def test_fit_in_frame_shrinks_tall_stand_and_keeps_top_on_screen():
+    from dyu.effects import fit_in_frame
+    # 720p frame, user close to the camera: a 1200 px tall Stand starting above the frame
+    x, y, w, h = fit_in_frame(900, -300, 600, 1200, 1280, 720, max_height=0.95)
+    assert h == int(720 * 0.95) and abs(w / h - 0.5) < 0.01   # capped height, aspect kept
+    assert y >= 0                                                # head on screen
+    assert 0 <= x and x + w <= 1280                              # not cut off at the sides
+
+
+def test_fit_in_frame_leaves_a_stand_that_already_fits_alone():
+    from dyu.effects import fit_in_frame
+    assert fit_in_frame(700, 50, 300, 500, 1280, 720) == (700, 50, 300, 500)

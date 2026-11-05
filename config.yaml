@@ -33,6 +33,8 @@ effects:
   stand_offset_x: 0.7 # sideways shift, in torso lengths (+ = screen right)
   stand_offset_y: -0.15 # vertical shift of the Stand's centre from the shoulders (- = up)
   stand_fade_bottom: 0.25 # fade the bottom 25% of each Stand image to transparent (0 = off)
+  keep_in_frame: true     # shrink/shift Stands so they don't leave the top or sides of the screen
+  stand_max_height: 0.95  # ...and are never taller than this share of the frame height
   menacing_text: true
   menacing_char: "ゴ"
   sound: true

@@ -24,7 +24,9 @@ cropped close-up frames are now skipped instead of summoning Gold Experience.
 **Also from this test:** `app.py --video` now shrinks frames to 720 px tall like extraction (phone
 clips ran at ~7 fps at 1080×1920; now ~15 fps), and `setup.sh` is executable on macOS.
 
-**Still open.** Not yet confirmed on the live webcam. The guard catches the obvious failure, but the
+**Webcam result.** The guard works live: Gold Experience is recognized at 0.99 when posed, and the mask puts it behind the user. But standing closer than in the clips makes the torso, and so every Stand, much larger: the Stands' heads left the top of the frame. A portrait camera wouldn't help (a narrower frame, not a taller one). Instead `dyu.effects.fit_in_frame()` caps a Stand at 95% of the frame height and shifts it fully on screen (`effects.keep_in_frame`, `stand_max_height`). Checked by cropping the s2 clips to the webcam's framing (head near the top, cut just below the knees): before, five of six Stands lost their heads; after, all six are fully visible. Unit-tested.
+
+**Still open.** Some poses don't get the right Stand live. Not yet known which, or what they're confused with. The guard catches the obvious failure, but the
 model has still only seen one person, one room and full-body framing from about 2–3 m away.
 
 ## 2026-11-04: App speed 5 → 20 fps; Stand placement for webcam frames

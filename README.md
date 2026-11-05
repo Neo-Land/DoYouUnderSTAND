@@ -137,6 +137,7 @@ Missing files never crash the app: no image shows a labelled placeholder, no sou
 - Stand is slow to appear: lower `min_votes` or `window`.
 - Find settings from data instead of guessing: `python scripts/eval_live.py` once (caches every frame's landmarks), then `python scripts/tune_smoothing.py` to grid-search `threshold` / `window` / `min_votes` / `linger_seconds` on held-out sessions.
 - Stand in the wrong spot or size: `stand_scale`, `stand_offset_x`, `stand_offset_y` (globally, or per Stand with `scale`, `offset_x`, `offset_y`). Units are torso lengths; + x = screen right, − y = up.
+- Stand cut off at the top or sides when you stand close to the camera: `keep_in_frame: true` (default) shrinks a Stand to at most `stand_max_height` (95%) of the frame height and moves it fully on screen.
 - Bottom fade: `stand_fade_bottom` (0.25 = bottom quarter fades out, 0 = off), or per Stand with `fade_bottom`.
 - Check placement without a webcam: `python scripts/render_stand_previews.py --landscape` saves one still per Stand from its `_s2` clip, padded to 16:9 like a webcam frame, to `reports/stand_previews/` (git-ignored, since it contains the art). Leave out `--landscape` to see the raw portrait clip.
 
