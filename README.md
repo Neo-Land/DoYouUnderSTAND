@@ -69,7 +69,7 @@ The JoJo app needs a trained pose model, and the training clips aren't in the re
 ```powershell
 python scripts/poses/extract_landmarks.py   # clips -> data/landmarks.csv
 python scripts/poses/train.py               # -> models/pose_classifier.joblib, reports/poses/
-python scripts/make_sounds.py               # optional: synthesize the Stand sound effects
+python scripts/make_sounds.py --callout     # optional: Stand sound effects that shout each name
 python app.py                               # start menu; --video <clip> to play a recording, --debug for the skeleton
 ```
 

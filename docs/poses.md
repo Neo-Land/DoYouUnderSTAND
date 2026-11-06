@@ -39,7 +39,7 @@ Keys: `s` sound on/off, `d` skeleton overlay, `m` back to the menu, `Tab` next m
 **Assets (not included).** Stand images and sounds are fan material and stay local (git-ignored):
 
 - `assets/stands/<label>.png`: one image per Stand. Transparent PNGs look best; others show as rectangles.
-- `assets/sounds/<label>.wav`: per-Stand sound; `assets/sounds/menacing.wav` plays for any Stand without its own. `python scripts/make_sounds.py` synthesizes an original set (a low rumble with an impact, a different pitch per Stand); replace them with clips you own if you like. Paths are in `config.yaml`.
+- `assets/sounds/<label>.wav`: per-Stand sound; `assets/sounds/menacing.wav` plays for any Stand without its own. `python scripts/make_sounds.py` synthesizes an original set (a low rumble with an impact, a different pitch per Stand); add `--callout` to have your computer's text-to-speech voice shout each Stand's name over it ("Star Platinum!"), or `--recordings <folder>` to use your own recorded `<label>.wav` shouts. Or replace them with clips you own. Paths are in `config.yaml`.
 
 Missing files never crash the app: a missing image shows a labelled placeholder, a missing sound plays silence.
 
