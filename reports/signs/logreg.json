@@ -1,12 +1,14 @@
 {
-  "model": "logistic_regression",
-  "C": 0.1,
+  "model": "logreg",
   "seq_len": 32,
   "signs": 100,
   "videos": {
     "train": 1491,
     "val": 378,
     "test": 1261
+  },
+  "settings": {
+    "C": 0.1
   },
   "val": {
     "top1": 0.7354497354497355,

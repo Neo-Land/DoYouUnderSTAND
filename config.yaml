@@ -108,7 +108,7 @@ signs:
   dataset_zip: datasets/asl_citizen/ASL_Citizen.zip   # the full download (~46 GB)
   dataset_dir: datasets/asl_citizen                   # where the chosen signs' videos are unpacked
   landmarks_dir: data/asl_signs                       # per-video landmarks + index.csv
-  model_path: models/sign_classifier.joblib
+  models_dir: models                                  # sign_logreg.joblib, sign_gru.pt
   reports_dir: reports/signs
   # 100 everyday signs, as ASL Citizen glosses. A trailing digit picks one of several signs for the
   # same English word (the variant with the most videos). Edit, then re-run scripts/signs/*.py.

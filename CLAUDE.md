@@ -24,15 +24,16 @@ team, summer 2027). The ASL mode is the part most relevant to the role, so it sh
   import it directly. Shared logic lives in `dyu/`; scripts are thin command-line wrappers.
 
 ## Layout
-- `app.py`            — live JoJo demo (webcam or `--video`)
+- `app.py`            — live demo: `--mode poses` (JoJo, default) or `--mode signs` (ASL)
 - `config.yaml`       — every setting: camera, extraction, recognition, effects, Stands, `signs:`
 - `dyu/`              — library; `dyu/__init__.py` has the module map
   - `landmarks.py` Detector (MediaPipe, wrist-crop fallback, person mask on a body crop, thread pool)
   - `features.py` JoJo features, mirroring, framing check · `pose_model.py` classifiers + feature matrices
   - `smoothing.py` hold-to-summon / dismiss · `live_eval.py` replay clips through the live logic
-  - `effects.py` Stand rendering · `signs.py` ASL sign features · `clips.py`, `config.py`
+  - `effects.py` Stand rendering · `clips.py`, `config.py`
+  - `signs.py` ASL sign features · `sign_model.py` GRU (torch) · `sign_live.py` live segmentation + recognizer
 - `scripts/poses/`    — extract_landmarks, train, eval_live, tune_smoothing, render_stand_previews
-- `scripts/signs/`    — extract_asl_citizen, extract_landmarks, train
+- `scripts/signs/`    — extract_asl_citizen, extract_landmarks, train (--model logreg|gru), eval_live
 - `tests/`            — pytest unit tests
 - `reports/poses/`, `reports/signs/` — committed results (numbers and charts only)
 - `docs/`             — `poses.md`, `signs.md` (detail for each mode), `DEVLOG.md` (experiment log)
@@ -49,7 +50,7 @@ Clips are named `<label>_s<session>`: s1–s3 phone, s4 MacBook webcam, s5 dismi
 - JoJo: `python scripts/poses/extract_landmarks.py`, `python scripts/poses/train.py`, `python app.py`
 - JoJo live metrics / tuning: `python scripts/poses/eval_live.py`, `python scripts/poses/tune_smoothing.py`
 - ASL: `python scripts/signs/extract_asl_citizen.py`, `python scripts/signs/extract_landmarks.py`,
-  `python scripts/signs/train.py`
+  `python scripts/signs/train.py --model gru`, `python scripts/signs/eval_live.py`, `python app.py --mode signs`
 - Checks: `python -m pytest -q` and `python -m ruff check .`
 
 ## Conventions
@@ -82,8 +83,9 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 ### Part 2 — ASL word signs
 - [x] Landmarks for 100 ASL Citizen signs (3,130 videos); baseline 70.1% top-1 / 89.5% top-5 on
       unseen test signers
-- [ ] GRU sequence model to beat the baseline
-- [ ] Live word-sign mode in app.py (top-5 predictions)
+- [x] GRU sequence model: 84.4% ± 0.1% top-1 / 97.1% top-5 on unseen signers (3 seeds)
+- [x] Live word-sign mode (`app.py --mode signs`): sign detected in 98.7% of test videos, 83.9% top-1
+- [ ] Test sign mode live on the Mac (copy models/sign_gru.pt over privately; never commit it)
 - [ ] Larger vocabulary (300 / 1,000 / all 2,731 signs)
 - [ ] Optional: fingerspelling (the old Kaggle-based scaffold was removed; rebuild on dyu if wanted)
 

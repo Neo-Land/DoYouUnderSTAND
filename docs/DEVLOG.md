@@ -5,6 +5,40 @@ Experiments on the JoJo pose classifier, newest first. All scores are leave-one-
 
 Paths in entries are as they were on that date; see the 2026-11-05 restructure entry for the mapping.
 
+## 2026-11-05: ASL GRU sequence model and live sign mode
+
+**GRU** (`dyu/sign_model.py`, `scripts/signs/train.py --model gru`). Per frame: linear 110 → 128 +
+LayerNorm + GELU; a 2-layer bidirectional GRU (128 units each way); mean and max over time; dropout
+0.3; linear to 100 signs. AdamW (lr 2e-3, one-cycle schedule, weight decay 1e-3), label smoothing 0.1,
+batch 64. Every batch is augmented: random mirror, a slight time warp (signs at different speeds),
+±10% scale, small noise on the standardized features. Epochs picked by early stopping on val top-1
+(patience 20), then refit on train + val for that many epochs and scored once on test. 3 seeds.
+
+| | Val top-1 | Test top-1 | Test top-5 |
+| --- | --- | --- | --- |
+| Logistic regression (C 0.1, re-run with C up to 1.0: 0.1 still best) | 73.5% | 70.1% | 89.5% |
+| GRU, seed 0 / 1 / 2 (best epoch 97 / 90 / 66) | 86.2% / 86.5% / 85.7% | 84.4% / 84.6% / 84.3% | 97.1% / 97.4% / 96.7% |
+| **GRU, mean** | | **84.4% ± 0.1%** | **97.1%** |
+
+Biggest gains on the baseline's hardest, motion-heavy signs: MUSIC 33% → 67%, LOVE 42% → 83%,
+COME 42% → 83%. One sign got worse: GOOD 75% → 42% (7 of 12 test videos read as THANKYOU, a near pair). Hardest now: GOOD 42%, SCHOOL 45%, POWER and THANKYOU 50%, WHAT 54%. The saved model
+(`models/sign_gru.pt`, local only) is seed 0's.
+
+A unit test first failed for a good reason: the synthetic classes differed in an x coordinate, and
+mirror augmentation flips x, making two classes identical. Moved the signal to a y coordinate.
+
+**Live sign mode** (`dyu/sign_live.py`, `app.py --mode signs`). The model expects one sign per clip,
+so the webcam stream has to be cut into signs. Rule: a frame is "signing" if a hand is visible with
+its wrist above a rest line. Measured on ASL Citizen (49,512 hand-visible frames), the wrist is at
+most 0.87 shoulder widths below the shoulder line in 99% of signing frames (median 0.29), so the
+rest line is 1.0 shoulder width. 3 signing frames start a sign (plus a 4-frame lead-in), 0.4 s without
+signing ends it, < 0.3 s is ignored, > 4 s is cut. 6 unit tests.
+
+**Live pipeline check** (`scripts/signs/eval_live.py`): every test video replayed frame by frame
+through the segmenter and recognizer, at its own fps. Sign detected in 98.7% of videos (split into
+more than one sign in 2.9%); top-1 83.9%, top-5 96.2% (85.0% top-1 when detected), against 84.4% with
+perfectly cut clips. Not yet tried on a live webcam.
+
 ## 2026-11-05: Repo restructure (no behaviour change)
 
 Cleanup for readability; no model, setting or result changed.

@@ -16,7 +16,8 @@ The name is a pun on both: do you *understand* (ASL), do you have a *Stand* (JoJ
 | JoJo poses | 6 poses + normal movement + dismiss, 5 recording sessions | **91.1%** accuracy, macro-F1 0.921 (leave-one-session-out) |
 | JoJo poses, live logic | replaying every clip through the app | **0 false summons** during normal movement; 24/24 pose clips summon (median 1.8 s) |
 | JoJo poses, speed | 1280×720 webcam frame, desktop CPU | **~20 fps** |
-| ASL word signs | 100 signs, 11 test signers never seen in training | **70.1% top-1, 89.5% top-5** (chance 1%) |
+| ASL word signs | 100 signs, 11 test signers never seen in training | **84.4% top-1, 97.1% top-5** with a GRU (chance 1%; baseline 70.1%) |
+| ASL, live pipeline | signs found and cut out of the stream by the app | sign detected in 98.7% of test videos; 83.9% top-1 |
 
 Details, design choices and how each number was measured: [docs/poses.md](docs/poses.md) and [docs/signs.md](docs/signs.md). Every experiment, with before and after numbers: [docs/DEVLOG.md](docs/DEVLOG.md).
 
@@ -41,12 +42,14 @@ python scripts/poses/train.py               # -> models/pose_classifier.joblib, 
 python app.py                               # webcam; --video <clip> to play a recording, --debug for the skeleton
 ```
 
-Hold a pose for about 1.5 s to summon its Stand; raise both arms in a "Y" for about 1 s to dismiss it. MediaPipe's model files (~30 MB) download into `models/` on the first run. ASL steps: [docs/signs.md](docs/signs.md#reproducing).
+Hold a pose for about 1.5 s to summon its Stand; raise both arms in a "Y" for about 1 s to dismiss it. MediaPipe's model files (~30 MB) download into `models/` on the first run.
+
+ASL mode: `python app.py --mode signs` (needs a sign model trained on ASL Citizen, see [docs/signs.md](docs/signs.md#reproducing)). Sign one word with your hands raised, lower them, and the top 5 guesses appear.
 
 ## Project structure
 
 ```
-app.py                      live JoJo demo (webcam or --video)
+app.py                      live demo: --mode poses (JoJo, default) or --mode signs (ASL)
 config.yaml                 every setting: camera, extraction, recognition, effects, Stands, ASL signs
 dyu/                        the shared library (see dyu/__init__.py for a module map)
   landmarks.py              MediaPipe wrapper: body + hands per frame, wrist-crop fallback, person mask
@@ -56,10 +59,12 @@ dyu/                        the shared library (see dyu/__init__.py for a module
   live_eval.py              replays recorded clips through the app's live logic
   effects.py                Stand rendering, ゴゴゴ text, sound
   signs.py                  ASL sign features: body-relative hands, trimming, resampling
+  sign_model.py             ASL GRU sequence classifier (PyTorch)
+  sign_live.py              ASL live mode: cut the stream into signs, classify each
   clips.py, config.py       clip-name parsing, config loading
 scripts/
   poses/                    extract_landmarks, train, eval_live, tune_smoothing, render_stand_previews
-  signs/                    extract_asl_citizen, extract_landmarks, train
+  signs/                    extract_asl_citizen, extract_landmarks, train, eval_live
 tests/                      unit tests (pytest), run with ruff in CI on every push
 reports/                    committed results: poses/ (metrics, confusion matrix, live eval), signs/
 docs/                       poses.md, signs.md, DEVLOG.md
@@ -85,7 +90,7 @@ Both run in GitHub Actions on every push. Each script starts with a docstring ex
 
 - [x] JoJo poses: recognition, Stand effects, hold-to-summon and dismiss, tested live on a webcam
 - [x] ASL word signs: landmarks for 100 signs, baseline at 70.1% top-1 on unseen signers
-- [ ] ASL: a GRU sequence model to beat the baseline
-- [ ] ASL: a live word-sign mode in the app with top-5 predictions
+- [x] ASL: a GRU sequence model: 84.4% top-1 / 97.1% top-5 on unseen signers
+- [x] ASL: a live word-sign mode in the app with top-5 predictions
 - [ ] ASL: a larger vocabulary
 - [ ] A short demo video

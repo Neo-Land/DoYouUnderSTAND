@@ -11,6 +11,8 @@ Module map (shared code; the command-line tools in scripts/ and app.py are thin 
     live_eval    JoJo poses: replay recorded clips through the app's live logic and score it
     effects      JoJo poses: Stand rendering behind the user, ゴゴゴ text, sound
     signs        ASL: per-frame sign features, trimming to the signing span, resampling, mirroring
+    sign_model   ASL: GRU sequence classifier (PyTorch, imported lazily)
+    sign_live    ASL: live mode, cutting the stream into signs (SignSegmenter) and classifying them
 
 Importing the package itself loads nothing heavy; MediaPipe and OpenCV are only imported by the
 modules that need them, so the unit tests run without MediaPipe installed.
