@@ -9,6 +9,27 @@ Real-time body and hand recognition from a webcam, built on MediaPipe landmarks,
 
 The name is a pun on both: do you *understand* (ASL), do you have a *Stand* (JoJo).
 
+## Demo
+
+*Demo video coming soon: summoning, switching and dismissing Stands, then live ASL signing with the top-5 guesses.*
+
+## How it works
+
+Both modes share one landmark detector; everything after it is specific to the mode.
+
+```mermaid
+flowchart LR
+    cam[Webcam frame] --> det["MediaPipe detector<br/>body + both hands<br/>(dyu/landmarks.py)"]
+    det --> pf["Pose features<br/>hips-centred, torso-scaled<br/>(dyu/features.py)"]
+    pf --> pc["Classifier<br/>random forest, 8 classes"]
+    pc --> sm["Hold to summon /<br/>dismiss logic<br/>(dyu/smoothing.py)"]
+    sm --> fx["Stand drawn behind you<br/>(person mask, dyu/effects.py)"]
+    det --> seg["Sign segmenter<br/>hands raised = signing<br/>(dyu/sign_live.py)"]
+    seg --> sf["Sign features, 32 frames<br/>shoulder-relative hands<br/>(dyu/signs.py)"]
+    sf --> gru["GRU sequence model<br/>100 signs<br/>(dyu/sign_model.py)"]
+    gru --> top5[Top-5 guesses + transcript]
+```
+
 ## Results at a glance
 
 | Mode | What | Result |
@@ -18,6 +39,11 @@ The name is a pun on both: do you *understand* (ASL), do you have a *Stand* (JoJ
 | JoJo poses, speed | 1280×720 webcam frame, desktop CPU | **~20 fps** |
 | ASL word signs | 100-sign subset of ASL Citizen, 11 test signers never seen in training | **84.4% top-1, 97.1% top-5** with a GRU (chance 1%; baseline 70.1%) |
 | ASL, live pipeline | signs found and cut out of the stream by the app | sign detected in 98.7% of test videos; 84.1% top-1 |
+
+<p align="center">
+  <img src="docs/figures/asl_results.png" alt="ASL accuracy on unseen signers: logistic regression 70.1% top-1 and 89.5% top-5; GRU 84.4% and 97.1%; GRU live pipeline 84.1% and 96.3%" width="49%">
+  <img src="docs/figures/jojo_results.png" alt="JoJo pose accuracy on held-out sessions: baseline 81.1%, with wrist-crop hand fallback 91.2%, with webcam session and dismiss pose 91.1% on a harder test" width="49%">
+</p>
 
 The ASL numbers are on a 100-sign subset, so they are not comparable with published results on ASL Citizen's full 2,731-sign vocabulary (about 62% top-1 for the dataset authors' baselines). Details, design choices and how each number was measured: [docs/poses.md](docs/poses.md) and [docs/signs.md](docs/signs.md). Every experiment, with before and after numbers: [docs/DEVLOG.md](docs/DEVLOG.md).
 
@@ -67,7 +93,7 @@ scripts/
   signs/                    extract_asl_citizen, extract_landmarks, train, eval_live
 tests/                      unit tests (pytest), run with ruff in CI on every push
 reports/                    committed results: poses/ (metrics, confusion matrix, live eval), signs/
-docs/                       poses.md, signs.md, DEVLOG.md
+docs/                       poses.md, signs.md, DEVLOG.md, figures/ (charts from scripts/make_figures.py)
 assets/, data/, datasets/, models/   local only, git-ignored (art, recordings, datasets, trained models)
 ```
 
