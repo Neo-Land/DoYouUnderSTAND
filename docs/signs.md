@@ -72,10 +72,12 @@ Numbers: `reports/signs/logreg.json`, `gru.json`, `live.json`; per sign: `report
 ## Live sign mode
 
 ```powershell
-python app.py --mode signs            # webcam; --video <clip> works too, --debug shows the skeleton
+python app.py --mode signs            # or python app.py and press a; --video <clip> works too, --debug shows the skeleton
 ```
 
 **Sit close**: your head and chest should fill most of the frame, like the signers in ASL Citizen (their shoulders span about half the frame height; the app says "Move closer" below 0.40). From the JoJo distance your hands are a third of that size, and signs made in the same place with different handshapes get confused (WATER / MOTHER, SICK / LEARN). Start with your hands down, sign one word, then lower your hands: the top 5 guesses appear on the right and the best one is added to a transcript at the bottom (`c` clears it). It needs `models/sign_gru.pt` (or `sign_logreg.joblib`) from training, which stays local.
+
+**Learn ASL** (`python app.py --mode practice`, or `p` in the menu) turns the same pipeline into practice: the app names a word, you sign it, and it grades the attempt. Green means the word was the model's top guess, yellow means it was in the top 5 (with its rank), red shows what the sign looked like instead. A correct sign moves on to the next word; `n` skips. Words come easiest first, ordered by the model's per-sign accuracy on the test signers (`reports/signs/gru_per_sign.csv`), so beginners get early successes. The app shows only the word: per the dataset license it never displays ASL Citizen videos, and it points to public dictionaries (Lifeprint, HandSpeak) for how a sign looks. Scoring logic: `dyu/practice.py`, unit-tested.
 
 How the stream is cut into signs (`dyu/sign_live.py`):
 
