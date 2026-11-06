@@ -11,7 +11,11 @@ The name is a pun on both: do you *understand* (ASL), do you have a *Stand* (JoJ
 
 ## Demo
 
-*Demo video coming soon: summoning, switching and dismissing Stands, then live ASL signing with the top-5 guesses.*
+<p align="center">
+  <img src="docs/figures/asl_demo.gif" alt="Live ASL mode on a MacBook webcam: the signer signs THANK YOU, HAPPY and LOVE; after each sign the top 5 guesses appear on the right and the word is added to the transcript at the bottom" width="560">
+</p>
+
+Live ASL mode on a MacBook webcam (`python app.py --mode signs`): sign a word, lower your hands, and the top 5 guesses appear. In the full 32-second take, all 7 signs (HELLO, BYE, THANK YOU, HAPPY, LOVE, MOTHER, WATER) came out on top. The model never saw this signer during training.
 
 ## How it works
 
