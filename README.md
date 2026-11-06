@@ -16,10 +16,10 @@ The name is a pun on both: do you *understand* (ASL), do you have a *Stand* (JoJ
 | JoJo poses | 6 poses + normal movement + dismiss, 5 recording sessions | **91.1%** accuracy, macro-F1 0.921 (leave-one-session-out) |
 | JoJo poses, live logic | replaying every clip through the app | **0 false summons** during normal movement; 24/24 pose clips summon (median 1.8 s) |
 | JoJo poses, speed | 1280×720 webcam frame, desktop CPU | **~20 fps** |
-| ASL word signs | 100 signs, 11 test signers never seen in training | **84.4% top-1, 97.1% top-5** with a GRU (chance 1%; baseline 70.1%) |
+| ASL word signs | 100-sign subset of ASL Citizen, 11 test signers never seen in training | **84.4% top-1, 97.1% top-5** with a GRU (chance 1%; baseline 70.1%) |
 | ASL, live pipeline | signs found and cut out of the stream by the app | sign detected in 98.7% of test videos; 83.9% top-1 |
 
-Details, design choices and how each number was measured: [docs/poses.md](docs/poses.md) and [docs/signs.md](docs/signs.md). Every experiment, with before and after numbers: [docs/DEVLOG.md](docs/DEVLOG.md).
+The ASL numbers are on a 100-sign subset, so they are not comparable with published results on ASL Citizen's full 2,731-sign vocabulary (about 62% top-1 for the dataset authors' baselines). Details, design choices and how each number was measured: [docs/poses.md](docs/poses.md) and [docs/signs.md](docs/signs.md). Every experiment, with before and after numbers: [docs/DEVLOG.md](docs/DEVLOG.md).
 
 ## Quick start
 
@@ -84,7 +84,7 @@ Both run in GitHub Actions on every push. Each script starts with a docstring ex
 
 - **Recordings** of the JoJo poses are personal and aren't published.
 - **Stand art and sounds** are fan material and stay local (`assets/` is git-ignored). *JoJo's Bizarre Adventure* characters and Stands belong to Hirohiko Araki / Shueisha; this is a non-commercial fan project.
-- **ASL Citizen** is used under its Microsoft Research license for non-commercial research. The videos, the landmarks extracted from them and models trained on them are never committed or published; only code and accuracy numbers are. See [docs/signs.md](docs/signs.md#license).
+- **ASL Citizen** (Desai et al. 2023, arXiv:2304.05934; [citation](docs/signs.md#citation)) is used under its Microsoft Research license for non-commercial research. The videos, the landmarks extracted from them and models trained on them are never committed or published; only code and accuracy numbers are. See [docs/signs.md](docs/signs.md#license).
 
 ## Roadmap
 

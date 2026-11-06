@@ -4,7 +4,7 @@ Recognizes isolated ASL signs (whole words, with their motion) from the same Med
 
 ## Data
 
-**ASL Citizen** (Microsoft Research; Desai et al., *ASL Citizen: A Community-Sourced Dataset for Advancing Isolated Sign Language Recognition*, NeurIPS 2023 Datasets and Benchmarks). The full dataset has about 83,000 videos of 2,731 signs from 52 signers. This project uses **100 everyday signs** (HELLO, THANKYOU, HELP, NAME, UNDERSTAND, …; the list is `signs.vocabulary` in `config.yaml`) with the dataset's official split:
+**ASL Citizen** (Microsoft Research; Desai et al. 2023, *ASL Citizen: A Community-Sourced Dataset for Advancing Isolated Sign Language Recognition*, arXiv:2304.05934; full citation [below](#citation)). It is a crowdsourced dataset of about 84,000 videos of 2,731 signs from 52 signers recording themselves with everyday webcams, collected with each contributor's consent. The authors frame isolated sign recognition as **dictionary retrieval**: someone signs in front of an ordinary camera and gets back a ranked list of the closest signs, which is what this project's live mode does with its top-5 list. This project uses **100 everyday signs** (HELLO, THANKYOU, HELP, NAME, UNDERSTAND, …; the list is `signs.vocabulary` in `config.yaml`) with the dataset's official split:
 
 | Split | Videos | Signers |
 | --- | --- | --- |
@@ -57,6 +57,8 @@ Test set: 1,261 videos from 11 signers no model saw. Chance is 1%.
 | **GRU sequence model** | **84.4%** ± 0.1% | **97.1%** | mean of 3 seeds; epochs picked by early stopping on the validation signers |
 | GRU, live pipeline (sign cut out by the app's segmenter) | 83.9% | 96.2% | a sign was detected in 98.7% of test videos |
 
+**How this compares with the paper.** The ASL Citizen authors' baselines reach about 62% top-1 on the full 2,731-sign vocabulary. These results are on a 100-sign subset, a much easier task (27 times fewer signs to choose between), so they are **not comparable** and don't claim to beat those baselines. Scaling the same pipeline to the full vocabulary is the way to make a like-for-like comparison.
+
 Both models are chosen on the 5 validation signers only, refit on train + val, and scored once on test. The GRU's three seeds land within 0.3 points of each other, so the gain over the baseline (+14 points top-1) isn't a lucky run.
 
 **Why the GRU helps.** The baseline flattens the 32 frames into one long vector, so it learns *where* the hands are at each moment but not how they move. The GRU reads the frames in order and keeps a running memory, so motion and its direction become usable. The signs that gained most were the ones the baseline found hardest, which differ mainly in movement: MUSIC 33% → 67%, LOVE 42% → 83%, COME 42% → 83%.
@@ -98,3 +100,18 @@ To change the vocabulary, edit `signs.vocabulary` in `config.yaml` and re-run al
 
 1. A larger vocabulary (300, 1,000, all 2,731 signs) to show how accuracy scales.
 2. Continuous signing (several signs without lowering the hands in between), which needs a model trained on sign boundaries.
+
+## Citation
+
+The dataset's authors ask that work using ASL Citizen cite their paper:
+
+```bibtex
+@article{desai2023asl,
+  title={ASL Citizen: A Community-Sourced Dataset for Advancing Isolated Sign Language Recognition},
+  author={Desai, Aashaka and Berger, Lauren and Minakov, Fyodor O and Milan, Vanessa and Singh, Chinmay and Pumphrey, Kriston and Ladner, Richard E and Daum{\'e} III, Hal and Lu, Alex X and Caselli, Naomi and Bragg, Danielle},
+  journal={arXiv preprint arXiv:2304.05934},
+  year={2023}
+}
+```
+
+Dataset and license: Microsoft Research's ASL Citizen page (download via the Microsoft Download Center); the authors' code is at github.com/microsoft/ASL-citizen-code.
