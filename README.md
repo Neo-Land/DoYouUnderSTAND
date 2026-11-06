@@ -40,7 +40,7 @@ flowchart LR
 | --- | --- | --- |
 | JoJo poses | 6 poses + normal movement + dismiss, 5 recording sessions | **91.1%** accuracy, macro-F1 0.921 (leave-one-session-out) |
 | JoJo poses, live logic | replaying every clip through the app | **0 false summons** during normal movement; 24/24 pose clips summon (median 1.8 s) |
-| JoJo poses, speed | 1280×720 webcam frame, desktop CPU | **~20 fps** |
+| JoJo poses, speed | 1280×720 webcam frame, desktop CPU | **~15 fps** (was 5) |
 | ASL word signs | 100-sign subset of ASL Citizen, 11 test signers never seen in training | **84.4% top-1, 97.1% top-5** with a GRU (chance 1%; baseline 70.1%) |
 | ASL, live pipeline | signs found and cut out of the stream by the app | sign detected in 98.7% of test videos; 84.1% top-1 |
 
@@ -69,6 +69,7 @@ The JoJo app needs a trained pose model, and the training clips aren't in the re
 ```powershell
 python scripts/poses/extract_landmarks.py   # clips -> data/landmarks.csv
 python scripts/poses/train.py               # -> models/pose_classifier.joblib, reports/poses/
+python scripts/make_sounds.py               # optional: synthesize the Stand sound effects
 python app.py                               # start menu; --video <clip> to play a recording, --debug for the skeleton
 ```
 
@@ -115,6 +116,7 @@ assets/, data/, datasets/, models/   local only, git-ignored (art, recordings, d
 ```powershell
 python -m pytest -q     # unit tests
 python -m ruff check .  # lint
+python app.py --profile # where each frame's time goes
 ```
 
 Both run in GitHub Actions on every push. Each script starts with a docstring explaining what it reads, what it writes and how to run it; `python <script> --help` prints the same.

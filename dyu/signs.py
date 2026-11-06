@@ -116,3 +116,22 @@ def mirror_sequence(seq):
         hk[:, :-1] = pts.reshape(T, -1)
     speed = seq[:, -2:][:, ::-1]
     return np.concatenate([body.reshape(T, -1), hands[1], hands[0], speed], axis=1)
+
+
+VOCAB_SIZES = (100, 300)
+
+
+def vocabulary(signs_cfg, size=100):
+    """The sign glosses for a vocabulary size: 100 = the core set the app uses (`vocabulary` in
+    config.yaml), 300 = the core set plus `extra_vocabulary`."""
+    core = list(signs_cfg["vocabulary"])
+    if size == 100:
+        return core
+    if size == 300:
+        return core + list(signs_cfg.get("extra_vocabulary", []))
+    raise ValueError(f"vocabulary size must be one of {VOCAB_SIZES}, not {size}")
+
+
+def vocab_suffix(size):
+    """File-name suffix for a vocabulary size: '' for the core 100 (unchanged names), '_300' otherwise."""
+    return "" if size == 100 else f"_{size}"

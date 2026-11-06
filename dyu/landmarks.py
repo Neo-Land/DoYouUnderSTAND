@@ -61,7 +61,20 @@ class FrameResult:
 
 
 class Detector:
-    def __init__(self, segmentation=False, num_hands=2):
+    def __init__(self, segmentation=False, num_hands=2, mask_every=1, crop_retry_every=1):
+        """segmentation: also compute a person mask (for drawing Stands behind the user).
+        mask_every / crop_retry_every: live-app speedups, 1 = off (exact, used for training data).
+          mask_every=N       compute the person mask every N-th frame and reuse it in between
+                             (it only affects drawing, never what the classifier sees)
+          crop_retry_every=N after the wrist-crop search fails for a hand, try it again only every
+                             N-th frame (a hand hidden on purpose, like Jotaro's pocket, would
+                             otherwise cost a ~20 ms search on every frame)
+        """
+        self.mask_every = max(1, int(mask_every))
+        self.crop_retry_every = max(1, int(crop_retry_every))
+        self._frame = 0
+        self._last_mask = None
+        self._crop_wait = [0, 0]           # frames left before retrying a failed crop, per side
         paths = ensure_models()
         pose_opts = vision.PoseLandmarkerOptions(
             base_options=mp_python.BaseOptions(model_asset_path=str(paths["pose"])),
@@ -167,11 +180,15 @@ class Detector:
                 out.pose = pose
                 out.pose_px = np.array([[lm.x * w, lm.y * h] for lm in lms], dtype=np.float32)
                 out.left_hand, out.right_hand = assign_hands(pose[:, :2], hands_hu)
-                mask_job = (self._pool.submit(self._person_mask, rgb, out.pose_px, ts)
-                            if self.segmenter is not None and self.mask_enabled else None)
+                wants_mask = self.segmenter is not None and self.mask_enabled
+                fresh_mask = wants_mask and (self._frame % self.mask_every == 0 or self._last_mask is None)
+                mask_job = self._pool.submit(self._person_mask, rgb, out.pose_px, ts) if fresh_mask else None
                 self._recover_missing_hands(rgb, out)
                 if mask_job is not None:
-                    out.mask = mask_job.result()
+                    self._last_mask = mask_job.result()
+                if wants_mask and self._last_mask is not None and self._last_mask.shape == (h, w):
+                    out.mask = self._last_mask
+        self._frame += 1
         return out
 
     SEG_SIZE = 256      # the selfie segmenter's input size
@@ -211,15 +228,21 @@ class Detector:
         jobs = []
         for k, (side, wrist_i, index_i) in enumerate((("left_hand", 15, 19), ("right_hand", 16, 20))):
             if getattr(out, side) is not None or out.pose[wrist_i, 2] < 0.3:
+                self._crop_wait[k] = 0
                 continue
-            jobs.append((side, self._pool.submit(self._detect_hand_in_crop, self.hand_crops[k], rgb,
-                                                 px[wrist_i], px[index_i], torso)))
-        for side, job in jobs:  # collected in left, right order so results are deterministic
+            if self._crop_wait[k] > 0:          # the last search for this hand failed: wait a bit
+                self._crop_wait[k] -= 1
+                continue
+            jobs.append((k, side, self._pool.submit(self._detect_hand_in_crop, self.hand_crops[k], rgb,
+                                                    px[wrist_i], px[index_i], torso)))
+        for k, side, job in jobs:  # collected in left, right order so results are deterministic
             hand_px = job.result()
             if hand_px is not None:
                 setattr(out, side, hand_px / h)  # pixels -> frame-height units
                 out.hands_px.append(hand_px)
                 self.crop_recoveries += 1
+            else:
+                self._crop_wait[k] = self.crop_retry_every - 1
 
     def close(self):
         self._pool.shutdown(wait=True)

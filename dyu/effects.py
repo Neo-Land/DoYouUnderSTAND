@@ -234,6 +234,21 @@ class StandRenderer:
         cv2.putText(img, label.upper(), (10, h // 2), cv2.FONT_HERSHEY_DUPLEX, w / 220, (255, 255, 255, 255), 2)
         return img
 
+    SIZE_STEP = 8   # px: sprite sizes are rounded to this, so small jitter in the torso length reuses one resize
+
+    def _sprite(self, s, img, w, h, fade):
+        """The Stand image resized to about (w, h) with its bottom faded, cached per Stand and size.
+
+        The torso length changes by a pixel or two every frame; without rounding and caching, the
+        full-size art was resized and faded again on every frame."""
+        hq = max(self.SIZE_STEP, int(round(h / self.SIZE_STEP)) * self.SIZE_STEP)
+        wq = max(self.SIZE_STEP, int(round(w * hq / max(h, 1))))
+        key = (wq, hq, fade, id(img))
+        if s.get("cache_key") != key:
+            sprite = cv2.resize(img, (wq, hq), interpolation=cv2.INTER_AREA)
+            s["cache"], s["cache_key"] = fade_bottom(sprite, fade), key
+        return s["cache"]
+
     def draw(self, frame, result, t):
         self._update_anchor(result.pose_px)
         visible = [(k, s) for k, s in self.stands.items() if s["alpha"] > 0.01]
@@ -259,8 +274,8 @@ class StandRenderer:
             if self.cfg.get("keep_in_frame", True):
                 x, y, w, h = fit_in_frame(x, y, w, h, frame.shape[1], frame.shape[0],
                                           float(self.cfg.get("stand_max_height", 0.95)))
-            sprite = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
-            sprite = fade_bottom(sprite, float(scfg.get("fade_bottom", self.cfg.get("stand_fade_bottom", 0.25))))
+            sprite = self._sprite(s, img, w, h, float(scfg.get("fade_bottom", self.cfg.get("stand_fade_bottom", 0.25))))
+            h, w = sprite.shape[:2]
             blend_rgba(layer, sprite, x, y, s["alpha"])
             boxes.append((x, y, x + w, y + h))
 

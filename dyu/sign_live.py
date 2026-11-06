@@ -93,14 +93,14 @@ def display_name(gloss):
 class SignRecognizer:
     """Loads the trained sign model (GRU if available, else the logistic-regression baseline)."""
 
-    def __init__(self, models_dir, rest_trim=True, mirror_average=True):
+    def __init__(self, models_dir, rest_trim=True, mirror_average=True, suffix=""):
         """rest_trim: cut the sign to the frames above the rest line before classifying (live clips can
         include resting hands that dataset clips never show). mirror_average: average the scores of
         the sign and its mirror image."""
         self.rest_trim = rest_trim
         self.mirror_average = mirror_average
         models_dir = Path(models_dir)
-        gru, logreg = models_dir / "sign_gru.pt", models_dir / "sign_logreg.joblib"
+        gru, logreg = models_dir / f"sign_gru{suffix}.pt", models_dir / f"sign_logreg{suffix}.joblib"
         if gru.exists():
             try:
                 from .sign_model import SignClassifier

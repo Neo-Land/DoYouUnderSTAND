@@ -44,3 +44,25 @@ def best_model_name(cfg):
         return json.loads(path.read_text())["best"]
     except (OSError, KeyError, ValueError):
         return "logistic_regression"
+
+
+def fast_predict_proba(model, X):
+    """predict_proba for one frame (or a few) without scikit-learn's per-tree overhead.
+
+    For a random forest, RandomForestClassifier.predict_proba runs each of its trees through joblib
+    and re-validates it, which costs ~16 ms per frame for 300 trees even on one core. Calling each
+    tree's compiled routine directly and averaging gives the same numbers in a fraction of that.
+    Any other model falls back to its own predict_proba.
+    """
+    X = np.ascontiguousarray(X, dtype=np.float32)
+    if not isinstance(model, RandomForestClassifier):
+        return model.predict_proba(X)
+    total = None
+    for tree in model.estimators_:
+        counts = tree.tree_.predict(X)                     # leaf class weights per sample
+        if counts.ndim == 3:                               # older scikit-learn: (n, n_outputs, n_classes)
+            counts = counts[:, 0, :]
+        sums = counts.sum(axis=1, keepdims=True)
+        proba = counts / np.where(sums == 0, 1.0, sums)
+        total = proba if total is None else total + proba
+    return total / len(model.estimators_)

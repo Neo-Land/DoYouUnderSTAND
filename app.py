@@ -4,6 +4,7 @@
     python app.py --mode poses             # straight into a mode: menu, poses, signs, practice
     python app.py --video <clip>           # play a recorded clip instead of the webcam
     python app.py --camera 1 --debug       # another camera; skeleton overlay on
+    python app.py --profile                # print where each frame's time goes (detect, draw, show)
 
 Keys, anywhere:  q / Esc quit   m menu   Tab next mode   d skeleton overlay
 In the menu:     j JoJo poses   a ASL signs   p Learn ASL
@@ -89,6 +90,7 @@ def main():
     ap.add_argument("--camera", type=int, help="camera index (default from config.yaml)")
     ap.add_argument("--no-sound", action="store_true", help="JoJo mode: no sound")
     ap.add_argument("--debug", action="store_true", help="start with the skeleton overlay on")
+    ap.add_argument("--profile", action="store_true", help="print where each frame's time goes, every 3 s")
     args = ap.parse_args()
     cfg = load_config()
 
@@ -98,11 +100,14 @@ def main():
     # Same cap as extraction: frames taller than this are shrunk, so the models see what they were
     # trained on and phone clips (1080x1920) don't run at a third of the speed.
     max_height = int(cfg["extraction"].get("max_height", 720))
-    detector = Detector(segmentation=True)
+    # Live speedups: reuse the person mask on alternate frames (drawing only) and retry a failed
+    # wrist-crop search every 3rd frame instead of every frame. Training data is extracted without them.
+    detector = Detector(segmentation=True, mask_every=2, crop_retry_every=3)
     cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
 
     t0 = prev = time.perf_counter()
     fps = 0.0
+    timings, last_report = {"detect": [], "mode": [], "show": []}, time.perf_counter()
     try:
         while True:
             ok, frame = cap.read()
@@ -118,12 +123,22 @@ def main():
             fps = 0.9 * fps + 0.1 * (1.0 / dt if dt > 0 else 0)
 
             detector.mask_enabled = app.mode.needs_mask          # the mask is only needed to draw Stands
+            a = time.perf_counter()
             res = detector.process(frame, (now - t0) * 1000.0)
+            b = time.perf_counter()
             out = app.mode.process(frame, res, now - t0, dt)
             put_text(out, f"{fps:4.1f} fps   {app.mode.name}   {app.mode.hints}", (20, out.shape[0] - 20), 0.5)
+            c = time.perf_counter()
 
             cv2.imshow(WINDOW, out)
             key = cv2.waitKey(1) & 0xFF
+            if args.profile:
+                for name, v in (("detect", b - a), ("mode", c - b), ("show", time.perf_counter() - c)):
+                    timings[name].append(v)
+                if time.perf_counter() - last_report > 3:
+                    parts = "  ".join(f"{n} {1000 * sum(v) / len(v):5.1f} ms" for n, v in timings.items() if v)
+                    print(f"[{app.mode.name}] {fps:4.1f} fps   {parts}   (frame {frame.shape[1]}x{frame.shape[0]})")
+                    timings, last_report = {k: [] for k in timings}, time.perf_counter()
             if key != 255 and not app.handle_key(key):
                 break
             if cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:

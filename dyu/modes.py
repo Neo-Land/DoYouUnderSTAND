@@ -25,6 +25,7 @@ from .config import resolve
 from .effects import SoundPlayer, StandRenderer
 from .features import FEATURE_DIM, body_in_frame, featurize
 from .landmarks import draw_landmarks
+from .pose_model import fast_predict_proba
 from .practice import CLOSE, CORRECT, PracticeSession, easiest_first
 from .sign_live import MIN_SHOULDER_WIDTH, SignRecognizer, SignSegmenter, display_name, frame_row, shoulder_width
 from .smoothing import PoseSmoother
@@ -57,6 +58,13 @@ class AppContext:
                 if bundle.get("feature_dim") != FEATURE_DIM:
                     print("The saved pose model uses different features; re-run scripts/poses/train.py.")
                     bundle = None
+                else:
+                    # Training uses every core (n_jobs=-1), but for one frame at a time the coordination
+                    # costs more than the work: 39 ms vs 16 ms per frame for the random forest.
+                    try:
+                        bundle["model"].set_params(n_jobs=1)
+                    except ValueError:       # a model without that setting (e.g. logistic regression)
+                        pass
             else:
                 print(f"No trained pose model at {path}; JoJo mode shows landmarks only.")
             sound = SoundPlayer({k: v.get("sound") for k, v in stands.items()}, fx.get("default_sound"),
@@ -152,7 +160,7 @@ class PosesMode(Mode):
         # view): a close-up upper body is unlike any training frame, and the model would still name a pose.
         framed = res.pose is not None and body_in_frame(res.pose, frame.shape[1] / frame.shape[0])
         if self.bundle is not None and framed:
-            proba = self.bundle["model"].predict_proba([featurize(res.pose, res.left_hand, res.right_hand)])[0]
+            proba = fast_predict_proba(self.bundle["model"], [featurize(res.pose, res.left_hand, res.right_hand)])[0]
             i = int(np.argmax(proba))
             self.label, self.prob = self.bundle["labels"][i], float(proba[i])
         active = self.smoother.update(self.label, self.prob, now)

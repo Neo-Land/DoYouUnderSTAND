@@ -39,7 +39,7 @@ Keys: `s` sound on/off, `d` skeleton overlay, `m` back to the menu, `Tab` next m
 **Assets (not included).** Stand images and sounds are fan material and stay local (git-ignored):
 
 - `assets/stands/<label>.png`: one image per Stand. Transparent PNGs look best; others show as rectangles.
-- `assets/sounds/<label>.wav`: optional per-Stand sound; `assets/sounds/menacing.wav` plays for any Stand without its own. Paths are in `config.yaml`.
+- `assets/sounds/<label>.wav`: per-Stand sound; `assets/sounds/menacing.wav` plays for any Stand without its own. `python scripts/make_sounds.py` synthesizes an original set (a low rumble with an impact, a different pitch per Stand); replace them with clips you own if you like. Paths are in `config.yaml`.
 
 Missing files never crash the app: a missing image shows a labelled placeholder, a missing sound plays silence.
 
@@ -99,15 +99,18 @@ The last row is a harder test (a second camera and an eighth class), so it isn't
 
 A wrong Stand never appeared in any clip. "Correct Stand while posing" is lower in the last row because the first 1.5 s of every pose count as not yet showing, and a few older phone clips (Giorno s1/s3, Josuke s1) take 6–8 s to summon. Settings were chosen on the same clips they're scored on, so expect live numbers to be a bit worse.
 
-**Speed.** Clips padded to 1280×720, 16-core desktop CPU, everything on:
+**Speed.** Measured with the app's own pipeline on 1280×720 frames (webcam size) on a 16-core desktop CPU, Jotaro clip (one hand hidden in a pocket):
 
-| | Before | After |
-| --- | --- | --- |
-| Person mask | 85 ms (whole frame) | 13 ms (crop around the body) |
-| Drawing the Stand behind you | 48 ms (whole frame) | ~10 ms (Stand's area only) |
-| Whole frame | ~180–200 ms (~5 fps) | ~49 ms (**~20 fps**) |
+| Version | Detection | Classify + draw | Whole frame |
+| --- | --- | --- | --- |
+| Before any speed work (logistic-regression model) | ~180 ms, mask on the whole frame | | ~5 fps |
+| Body-crop mask, parallel models, draw only the Stand's area (logistic regression) | ~35 ms | ~10 ms | ~20 fps |
+| After the switch to a random-forest model (better accuracy with the webcam session) | 44 ms | 66 ms | 9.1 fps |
+| Random forest on one core per frame | 44 ms | 41 ms | 11.8 fps |
+| + forest prediction without scikit-learn's per-tree overhead (identical output) | 44 ms | 30 ms | 13.6 fps |
+| + mask every other frame, failed hand search retried every 3rd frame | 35 ms | 30 ms | **15.4 fps** |
 
-The models run on a small thread pool (MediaPipe releases Python's lock); landmarks are bit-for-bit identical to running them one by one.
+The random forest won on held-out accuracy once the webcam session and the dismiss pose were added, but it's slower per frame: scikit-learn spreads its 300 trees across all cores and re-checks each tree on every call, which costs far more than the work for a single frame (39 ms). The app now predicts on one core and calls each tree's compiled routine directly (3 ms, the same probabilities to the last digit, unit-tested). The two live-only shortcuts change nothing the classifier sees during training: the person mask only affects drawing, and a hand that's hidden on purpose is just searched for less often. `python app.py --profile` prints the same breakdown on any machine.
 
 ## Training your own model
 

@@ -1,7 +1,8 @@
 """ASL step 0: unpack only the videos of the chosen signs from the full ASL Citizen zip (~46 GB).
 
 Usage:
-    python scripts/signs/extract_asl_citizen.py
+    python scripts/signs/extract_asl_citizen.py              # the core 100 signs
+    python scripts/signs/extract_asl_citizen.py --vocab 300  # core + extra_vocabulary
 
 The signs are `signs.vocabulary` in config.yaml; paths are under `signs:` too.
 Expects datasets/asl_citizen/ASL_Citizen.zip. Writes:
@@ -19,19 +20,22 @@ import sys
 import zipfile
 
 from dyu.config import load_config, resolve
+from dyu.signs import VOCAB_SIZES, vocabulary
 
 PREFIX = "ASL_Citizen/"
 SPLITS = ("train", "val", "test")
 
 
 def main():
-    argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter).parse_args()
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--vocab", type=int, choices=VOCAB_SIZES, default=100)
+    args = ap.parse_args()
     cfg = load_config()["signs"]
     zpath = resolve(cfg["dataset_zip"])
     if not zpath.exists():
         sys.exit(f"Not found: {zpath}\nDownload ASL Citizen and put the zip there.")
     out = resolve(cfg["dataset_dir"])
-    wanted = set(cfg["vocabulary"])
+    wanted = set(vocabulary(cfg, args.vocab))
 
     with zipfile.ZipFile(zpath) as z:
         rows = []

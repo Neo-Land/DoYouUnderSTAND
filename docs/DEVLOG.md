@@ -5,6 +5,38 @@ Experiments on the JoJo pose classifier, newest first. All scores are leave-one-
 
 Paths in entries are as they were on that date; see the 2026-11-05 restructure entry for the mapping.
 
+## 2026-11-06: JoJo speed, sound effects, 300-sign run started
+
+**Speed.** Neo's screen recording on the MacBook ran JoJo mode at ~6–9 fps. Benchmarking the app's
+own pipeline on 1280×720 frames on the desktop (Jotaro webcam clip) found the main cost wasn't
+detection (44 ms) but "classify + draw" (66 ms). The JoJo model had become a random forest when the
+webcam session and dismiss pose were added (it won on held-out accuracy), and scikit-learn's
+`predict_proba` for one frame took 39 ms with `n_jobs=-1` (thread coordination for 300 trees), 16 ms
+on one core, and still mostly per-tree validation overhead. Fixes:
+- predict on one core; `dyu.pose_model.fast_predict_proba` calls each tree's compiled routine and
+  averages: 3.3 ms, max difference from scikit-learn 0.0 over 300 real frames (unit-tested);
+- `Detector(mask_every=2, crop_retry_every=3)` in the app only: the person mask is reused on
+  alternate frames (drawing only), and a failed wrist-crop search is retried every 3rd frame instead
+  of every frame (Jotaro's pocket hand cost ~20 ms a frame). Extraction keeps the exact defaults;
+- the resized, faded Stand image is cached per size (sizes rounded to 8 px);
+- `python app.py --profile` prints detect / draw / show times every 3 s.
+
+Jotaro: 9.1 → 15.4 fps; Kira: 9.7 → 14.6 fps (desktop). The README's earlier "~20 fps" was measured
+with the logistic-regression model and is corrected to ~15. Not yet measured on the Mac.
+
+**Sound.** No Stand sounds played because `assets/sounds/` was empty. `scripts/make_sounds.py`
+synthesizes original effects (a detuned low drone with tremolo, a noise swell and a soft impact; a
+different pitch, tremolo and brightness per Stand), so nothing copyrighted is used. All 7 files load
+in the app's `SoundPlayer`.
+
+**300 signs.** `extra_vocabulary` in config.yaml adds 200 everyday signs (people and family,
+feelings, time, places, food, actions, descriptions; 6,189 videos), picked from a priority list of
+common words and matched to ASL Citizen glosses (the most-recorded variant where there are several;
+28 words, e.g. I, SHE, QUESTION, aren't in the dataset). The sign scripts take `--vocab 100|300`;
+300-sign outputs are suffixed `_300`, so the app's 100-sign model and the published numbers are
+untouched. `scripts/signs/run_vocab.ps1` runs unpack → landmarks → logreg → GRU (3 seeds) → live
+replay as a detached process. Started 10:33; results to follow.
+
 ## 2026-11-06: Start menu and a Learn ASL practice mode
 
 Branch `feature/mode-menu-practice`. Goal: one app instead of command-line flags, and a practice

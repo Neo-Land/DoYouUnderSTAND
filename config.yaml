@@ -124,3 +124,27 @@ signs:
     "CAR", "BUS", "MONEY2", "BUY", "PLAY", "MUSIC", "MOVIE1", "DANCE", "SLEEP", "SICK",
     "HURT", "DOCTOR2", "READY", "NOT", "WORKOUT", "FIGHT", "STAND1", "POWER", "STRONG", "WIN"
   ]
+  # 200 more everyday signs (people, feelings, time, places, food, actions, descriptions) for the
+  # 300-sign experiment: scripts/signs/*.py --vocab 300. The app keeps using the 100-sign model.
+  extra_vocabulary: [
+    "YOU", "ME", "MY", "YOUR", "WE", "THEY1", "HE", "BOY", "GIRL", "MAN",
+    "WOMAN1", "BABY2", "CHILD", "PEOPLE", "PERSON", "BROTHER", "SISTER", "SON", "DAUGHTER", "GRANDMOTHER",
+    "GRANDFATHER", "AUNT", "UNCLE", "COUSIN", "HUSBAND", "WIFE", "PARENTS", "BOYFRIEND", "EXCITED", "SCARED",
+    "BORED1", "CONFUSED1", "JEALOUS", "LONELY", "CALM", "UPSET1", "FEEL", "WHICH", "ANSWER", "MEAN2",
+    "WEEK", "MONTH", "YEAR", "AFTERNOON", "BEFORE", "AFTER", "ALWAYS", "NEVER", "SOMETIMES", "OFTEN",
+    "SOON2", "FIRST", "LAST", "NEXT", "EARLY", "LATE", "BIRTHDAY", "HOLIDAY", "WEEKEND", "MONDAY",
+    "FRIDAY", "SATURDAY", "SUNDAY", "HOUR", "MINUTE", "HOUSE", "ROOM", "KITCHEN", "BED2", "CHAIR",
+    "TABLE", "DOOR", "WINDOW", "RESTAURANT", "HOSPITAL1", "CHURCH", "LIBRARY", "PARK", "CITY1", "COUNTRY",
+    "WORLD", "OUTSIDE", "INSIDE", "CLASS", "COLLEGE", "UNIVERSITY", "OFFICE", "BREAKFAST1", "LUNCH1", "DINNER1",
+    "BREAD", "CHEESE", "EGG", "MEAT1", "FISH", "SOUP", "SALAD", "FRUIT", "BANANA3", "ORANGE",
+    "CANDY2", "COOKIE", "CAKE", "ICECREAM", "JUICE1", "TEA", "BEER", "WINE", "SODA", "HAMBURGER",
+    "FRENCHFRIES", "SANDWICH2", "RUN1", "WALK2", "SIT", "READ", "WRITE", "DRAW", "CLEAN", "COOK",
+    "WASH1", "OPEN", "CLOSE", "GIVE", "TAKE", "MAKE", "BRING", "SEND", "CALL2", "TELL",
+    "ASK", "TALK2", "LISTEN", "SEE", "WATCH", "FIND", "LOSE", "REMEMBER2", "TRY", "START",
+    "CHANGE", "MOVE", "TRAVEL", "DRIVE", "FLY", "SWIM1", "PAINT", "SING", "CRY2", "LAUGH",
+    "SMILE1", "KISS3", "HUG", "DECIDE1", "PRACTICE", "STUDY", "TEACH1", "SHOW", "USE", "PAY",
+    "SELL", "BIG", "SMALL", "TALL2", "LONG", "NEW", "OLD", "YOUNG", "FAST", "SLOW",
+    "EASY", "HARD", "UGLY", "DIRTY", "FULL", "EMPTY2", "RIGHT2", "WRONG", "TRUE", "SAFE",
+    "IMPORTANT", "FAVORITE", "BEST", "BETTER", "WORSE", "SAME2", "QUIET", "LOUD", "FUNNY", "SERIOUS",
+    "SMART", "BUSY", "FREE", "RICH", "POOR", "CHEAP", "EXPENSIVE", "WARM", "COOL3", "WET"
+  ]

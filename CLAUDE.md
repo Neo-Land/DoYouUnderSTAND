@@ -34,7 +34,10 @@ team, summer 2027). The ASL mode is the part most relevant to the role, so it sh
   - `signs.py` ASL sign features · `sign_model.py` GRU (torch) · `sign_live.py` live segmentation + recognizer
   - `modes.py` the app's screens (one class per mode) · `practice.py` Learn ASL scoring · `ui.py` drawing helpers
 - `scripts/poses/`    — extract_landmarks, train, eval_live, tune_smoothing, render_stand_previews
-- `scripts/signs/`    — extract_asl_citizen, extract_landmarks, train (--model logreg|gru), eval_live
+- `scripts/signs/`    — extract_asl_citizen, extract_landmarks, train (--model logreg|gru), eval_live;
+  all take `--vocab 100|300` (300 = core + `extra_vocabulary`, outputs named *_300). run_vocab.ps1 runs
+  the whole pipeline unattended (logs/signs_vocab<N>.log)
+- `scripts/make_sounds.py` — synthesizes original Stand sounds into assets/sounds/ (gitignored)
 - `tests/`            — pytest unit tests
 - `reports/poses/`, `reports/signs/` — committed results (numbers and charts only)
 - `docs/`             — `poses.md`, `signs.md` (detail for each mode), `DEVLOG.md` (experiment log)
@@ -81,7 +84,7 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 ## Roadmap
 ### Part 1 — JoJo poses (done)
 - [x] 6 poses + none + dismiss, 5 sessions; 91.1% / macro-F1 0.921 leave-one-session-out
-- [x] Stand effects, ~20 fps at 1280x720, keep-in-frame, framing check
+- [x] Stand effects, ~15 fps at 1280x720 on the desktop (random forest), keep-in-frame, framing check, sounds
 - [x] Hold to summon / stay until dismissed: 0 false summons, 24/24 summon, dismiss 2/2
 
 ### Part 2 — ASL word signs

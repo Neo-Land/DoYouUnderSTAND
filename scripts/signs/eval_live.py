@@ -20,6 +20,7 @@ import pandas as pd
 
 from dyu.config import ROOT, load_config, resolve
 from dyu.sign_live import SignRecognizer, SignSegmenter, display_name
+from dyu.signs import VOCAB_SIZES, vocab_suffix, vocabulary
 
 
 def replay(frames, fps):
@@ -44,15 +45,16 @@ def main():
     ap.add_argument("--split", default="test", choices=["train", "val", "test"])
     ap.add_argument("--no-rest-trim", action="store_true", help="classify the whole cut-out sign")
     ap.add_argument("--no-mirror-average", action="store_true", help="score the sign only as signed")
-    ap.add_argument("--out", default="live.json", help="report file name in reports/signs/")
+    ap.add_argument("--out", default=None, help="report file name in reports/signs/ (default live.json / live_300.json)")
+    ap.add_argument("--vocab", type=int, choices=VOCAB_SIZES, default=100)
     args = ap.parse_args()
 
     cfg = load_config()["signs"]
     data = resolve(cfg["landmarks_dir"])
     recognizer = SignRecognizer(resolve(cfg["models_dir"]), rest_trim=not args.no_rest_trim,
-                                mirror_average=not args.no_mirror_average)
+                                mirror_average=not args.no_mirror_average, suffix=vocab_suffix(args.vocab))
     index = pd.read_csv(data / "index.csv")
-    index = index[index.split == args.split]
+    index = index[(index.split == args.split) & index.gloss.isin(set(vocabulary(cfg, args.vocab)))]
     print(f"{recognizer.name} model; {len(index)} {args.split} videos, {index.participant.nunique()} signers")
 
     rows = []
@@ -78,7 +80,7 @@ def main():
           f"(split into more than one sign: {report['more_than_one_segment']:.1%})")
     print(f"  live top-1 {report['top1']:.1%}  top-5 {report['top5']:.1%}  "
           f"(top-1 when detected: {report['top1_when_detected']:.1%})")
-    out = resolve(cfg["reports_dir"]) / args.out
+    out = resolve(cfg["reports_dir"]) / (args.out or f"live{vocab_suffix(args.vocab)}.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2))
     print(f"Saved {out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}")

@@ -4,6 +4,7 @@ Usage:
     python scripts/signs/train.py --model logreg            # baseline: logistic regression
     python scripts/signs/train.py --model gru               # GRU sequence model (needs torch), 3 seeds
     python scripts/signs/train.py --model gru --seeds 0     # one seed, faster
+    python scripts/signs/train.py --model gru --vocab 300   # the 300-sign experiment (outputs named *_300)
 
 Needs data/asl_signs/ from scripts/signs/extract_landmarks.py. Uses ASL Citizen's official splits,
 which put every signer in exactly one of train / val / test, so test accuracy is on people the model
@@ -32,7 +33,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from dyu.config import ROOT, load_config, resolve
-from dyu.signs import SEQ_LEN, mirror_sequence, sequence
+from dyu.signs import SEQ_LEN, VOCAB_SIZES, mirror_sequence, sequence, vocab_suffix, vocabulary
 
 _CFG = load_config()["signs"]
 DATA = resolve(_CFG["landmarks_dir"])
@@ -40,9 +41,15 @@ REPORTS = resolve(_CFG["reports_dir"])
 MODELS = resolve(_CFG["models_dir"])
 
 
-def load():
-    """All videos as (N, SEQ_LEN, FRAME_DIM) sequences, plus the index (gloss, split, signer)."""
+def load(vocab=100):
+    """The vocabulary's videos as (N, SEQ_LEN, FRAME_DIM) sequences, plus the index (gloss, split, signer)."""
     index = pd.read_csv(DATA / "index.csv")
+    wanted = set(vocabulary(_CFG, vocab))
+    index = index[index.gloss.isin(wanted)].reset_index(drop=True)
+    missing = wanted - set(index.gloss)
+    if missing:
+        raise SystemExit(f"{len(missing)} signs have no landmarks yet (e.g. {sorted(missing)[:5]}); "
+                         f"run extract_asl_citizen.py and extract_landmarks.py with --vocab {vocab} first")
     seqs = np.stack([sequence(np.load(DATA / (Path(f).stem + ".npy"))) for f in index.file])
     return index, seqs
 
@@ -61,7 +68,7 @@ def fit_logreg(X, y, C):
     return model
 
 
-def run_logreg(seqs, y, tr, va, te):
+def run_logreg(seqs, y, tr, va, te, suffix=""):
     flat = seqs.reshape(len(seqs), -1)
     best = None
     for C in (0.01, 0.03, 0.1, 0.3, 1.0):
@@ -78,14 +85,14 @@ def run_logreg(seqs, y, tr, va, te):
               "test": {"top1": top_k(p, final.classes_, y[te], 1), "top5": top_k(p, final.classes_, y[te], 5)}}
     pred = final.classes_[p.argmax(1)]
     MODELS.mkdir(exist_ok=True)
-    path = MODELS / "sign_logreg.joblib"
+    path = MODELS / f"sign_logreg{suffix}.joblib"
     joblib.dump({"model": final, "classes": list(final.classes_), "seq_len": SEQ_LEN}, path)
     return result, pred, path
 
 
 # ---------------------------------------------------------------- GRU sequence model
 
-def run_gru(seqs, y, tr, va, te, seeds):
+def run_gru(seqs, y, tr, va, te, seeds, suffix=""):
     from dyu.sign_model import GRUConfig, SignClassifier
 
     runs, saved, pred0 = [], None, None
@@ -104,7 +111,7 @@ def run_gru(seqs, y, tr, va, te, seeds):
                      "test_top1": test1, "test_top5": test5})
         if saved is None:  # keep the first seed's model and predictions
             MODELS.mkdir(exist_ok=True)
-            saved = MODELS / "sign_gru.pt"
+            saved = MODELS / f"sign_gru{suffix}.pt"
             final.save(saved)
             pred0 = final.predict(seqs[te])
 
@@ -122,10 +129,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", choices=["logreg", "gru"], default="gru")
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2], help="GRU only")
+    ap.add_argument("--vocab", type=int, choices=VOCAB_SIZES, default=100,
+                    help="100 = the core signs the app uses; 300 = core + extra_vocabulary")
     args = ap.parse_args()
 
     t0 = time.time()
-    index, seqs = load()
+    index, seqs = load(args.vocab)
+    suffix = vocab_suffix(args.vocab)
     y, split = index.gloss.to_numpy(), index.split.to_numpy()
     tr, va, te = split == "train", split == "val", split == "test"
     print(f"{len(index)} videos, {index.gloss.nunique()} signs, {SEQ_LEN} frames x {seqs.shape[2]} features")
@@ -133,9 +143,9 @@ def main():
           f"val {va.sum()} / {index[va].participant.nunique()}, test {te.sum()} / {index[te].participant.nunique()}\n")
 
     if args.model == "logreg":
-        result, pred, model_path = run_logreg(seqs, y, tr, va, te)
+        result, pred, model_path = run_logreg(seqs, y, tr, va, te, suffix)
     else:
-        result, pred, model_path = run_gru(seqs, y, tr, va, te, args.seeds)
+        result, pred, model_path = run_gru(seqs, y, tr, va, te, args.seeds, suffix)
 
     test, chance = result["test"], 1 / index.gloss.nunique()
     spread = f" (± {test['top1_std']:.1%} over {len(args.seeds)} seeds)" if "top1_std" in test else ""
@@ -152,9 +162,9 @@ def main():
     REPORTS.mkdir(parents=True, exist_ok=True)
     report = {"model": args.model, "seq_len": SEQ_LEN, "signs": int(index.gloss.nunique()),
               "videos": {"train": int(tr.sum()), "val": int(va.sum()), "test": int(te.sum())}, **result}
-    (REPORTS / f"{args.model}.json").write_text(json.dumps(report, indent=2))
-    per_sign.to_csv(REPORTS / f"{args.model}_per_sign.csv")
-    print(f"\nSaved {(REPORTS / f'{args.model}.json').relative_to(ROOT)} and {model_path.relative_to(ROOT)} "
+    (REPORTS / f"{args.model}{suffix}.json").write_text(json.dumps(report, indent=2))
+    per_sign.to_csv(REPORTS / f"{args.model}{suffix}_per_sign.csv")
+    print(f"\nSaved {(REPORTS / f'{args.model}{suffix}.json').relative_to(ROOT)} and {model_path.relative_to(ROOT)} "
           f"({time.time() - t0:.0f}s)")
 
 
