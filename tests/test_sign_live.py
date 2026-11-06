@@ -63,3 +63,18 @@ def test_display_names():
     assert display_name("WANT1") == "WANT"
     assert display_name("THANKYOU") == "THANK YOU"
     assert display_name("HELLO") == "HELLO"
+
+
+def test_rest_trim_drops_resting_frames_around_the_sign():
+    from dyu.sign_live import rest_trimmed
+
+    frames = np.array([frame(1.5)] * 10 + [frame(0.3)] * 20 + [frame(1.5)] * 10)   # rest, sign, rest
+    kept = rest_trimmed(frames, margin=2)
+    assert len(kept) == 20 + 2 * 2
+
+
+def test_shoulder_width_in_frame_heights():
+    from dyu.sign_live import shoulder_width
+
+    assert abs(shoulder_width(frame(0.3)) - 0.2) < 1e-6    # shoulders 0.2 apart in the helper
+    assert shoulder_width(None) is None

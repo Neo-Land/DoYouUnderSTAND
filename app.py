@@ -22,7 +22,7 @@ from dyu.config import load_config, resolve
 from dyu.effects import SoundPlayer, StandRenderer
 from dyu.features import FEATURE_DIM, body_in_frame, featurize
 from dyu.landmarks import Detector, draw_landmarks
-from dyu.sign_live import SignRecognizer, SignSegmenter, frame_row
+from dyu.sign_live import MIN_SHOULDER_WIDTH, SignRecognizer, SignSegmenter, frame_row, shoulder_width
 from dyu.smoothing import PoseSmoother
 
 WINDOW = "Do You UnderSTAND"
@@ -189,7 +189,9 @@ def run_signs(args, cfg):
             fps = 0.9 * fps + 0.1 * (1.0 / dt if dt > 0 else 0)
 
             res = detector.process(frame, (now - t0) * 1000.0)
-            sign = segmenter.update(frame_row(res), now - t0)
+            row = frame_row(res)
+            sign = segmenter.update(row, now - t0)
+            width = shoulder_width(row)
             if sign is not None:
                 guesses = recognizer.top(sign, k=5)
                 transcript = (transcript + [guesses[0][0]])[-8:]
@@ -202,6 +204,9 @@ def run_signs(args, cfg):
             # status, top left
             if res.pose is None:
                 put_text(out, "Step into frame (head and shoulders)", (20, 45), 0.8, (120, 200, 255))
+            elif width is not None and width < MIN_SHOULDER_WIDTH:
+                # Signers in the training data sit close; far away, hands are too small for finger detail.
+                put_text(out, "Move closer: head and chest should fill the frame", (20, 45), 0.8, (120, 200, 255))
             elif segmenter.active:
                 cv2.circle(out, (32, 38), 10, (40, 40, 230), -1)
                 put_text(out, "Signing...", (52, 47), 0.9, (40, 40, 230))

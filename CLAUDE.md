@@ -84,7 +84,7 @@ Dataset lives in `datasets/asl_citizen/` (gitignored). Non-commercial research u
 - [x] Landmarks for 100 ASL Citizen signs (3,130 videos); baseline 70.1% top-1 / 89.5% top-5 on
       unseen test signers
 - [x] GRU sequence model: 84.4% ± 0.1% top-1 / 97.1% top-5 on unseen signers (3 seeds)
-- [x] Live word-sign mode (`app.py --mode signs`): sign detected in 98.7% of test videos, 83.9% top-1
+- [x] Live word-sign mode (`app.py --mode signs`): sign detected in 98.7% of test videos, 84.1% top-1
 - [ ] Test sign mode live on the Mac (copy models/sign_gru.pt over privately; never commit it)
 - [ ] Larger vocabulary (300 / 1,000 / all 2,731 signs)
 - [ ] Optional: fingerspelling (the old Kaggle-based scaffold was removed; rebuild on dyu if wanted)

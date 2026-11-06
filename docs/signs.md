@@ -55,7 +55,7 @@ Test set: 1,261 videos from 11 signers no model saw. Chance is 1%.
 | --- | --- | --- | --- |
 | Logistic regression on the flattened 32-frame sequence | 70.1% | 89.5% | C picked on the validation signers |
 | **GRU sequence model** | **84.4%** ± 0.1% | **97.1%** | mean of 3 seeds; epochs picked by early stopping on the validation signers |
-| GRU, live pipeline (sign cut out by the app's segmenter) | 83.9% | 96.2% | a sign was detected in 98.7% of test videos |
+| GRU, live pipeline (sign cut out by the app's segmenter) | 84.1% | 96.3% | a sign was detected in 98.7% of test videos |
 
 **How this compares with the paper.** The ASL Citizen authors' baselines reach about 62% top-1 on the full 2,731-sign vocabulary. These results are on a 100-sign subset, a much easier task (27 times fewer signs to choose between), so they are **not comparable** and don't claim to beat those baselines. Scaling the same pipeline to the full vocabulary is the way to make a like-for-like comparison.
 
@@ -75,13 +75,13 @@ Numbers: `reports/signs/logreg.json`, `gru.json`, `live.json`; per sign: `report
 python app.py --mode signs            # webcam; --video <clip> works too, --debug shows the skeleton
 ```
 
-Sit so your head and shoulders are in frame. Start with your hands down, sign one word, then lower your hands: the top 5 guesses appear on the right and the best one is added to a transcript at the bottom (`c` clears it). It needs `models/sign_gru.pt` (or `sign_logreg.joblib`) from training, which stays local.
+**Sit close**: your head and chest should fill most of the frame, like the signers in ASL Citizen (their shoulders span about half the frame height; the app says "Move closer" below 0.40). From the JoJo distance your hands are a third of that size, and signs made in the same place with different handshapes get confused (WATER / MOTHER, SICK / LEARN). Start with your hands down, sign one word, then lower your hands: the top 5 guesses appear on the right and the best one is added to a transcript at the bottom (`c` clears it). It needs `models/sign_gru.pt` (or `sign_logreg.joblib`) from training, which stays local.
 
 How the stream is cut into signs (`dyu/sign_live.py`):
 
 - A frame counts as **signing** when a hand is visible and its wrist is above a rest line, 1.0 shoulder widths below the shoulders. Measured on ASL Citizen, wrists stay within 0.87 shoulder widths below the shoulders in 99% of signing frames, while hands resting on a desk or in a lap sit lower.
 - 3 signing frames in a row start a sign (a few frames before are kept so the start isn't clipped); 0.4 s without signing ends it. Signs shorter than 0.3 s are ignored as twitches; longer than 4 s are cut.
-- The sign's frames go through the same `sequence()` as training: trimmed to the frames with a visible hand, resampled to 32 frames.
+- The sign is trimmed to the frames with a hand above the rest line, then goes through the same `sequence()` as training (resampled to 32 frames). Scores are averaged over the sign and its mirror image. On the test signers both steps are neutral (84.1% live top-1 vs 83.9% without); they're there for live clips, which can include resting hands.
 
 ## Reproducing
 

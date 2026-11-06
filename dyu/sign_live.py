@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 
 from .features import RAW_COLUMNS, raw_to_row
-from .signs import sequence
+from .signs import mirror_sequence, sequence
 
 REST_LINE = 1.0     # shoulder widths below the shoulder line; lower wrists count as resting
 _C = {c: i for i, c in enumerate(RAW_COLUMNS)}
@@ -93,7 +93,12 @@ def display_name(gloss):
 class SignRecognizer:
     """Loads the trained sign model (GRU if available, else the logistic-regression baseline)."""
 
-    def __init__(self, models_dir):
+    def __init__(self, models_dir, rest_trim=True, mirror_average=True):
+        """rest_trim: cut the sign to the frames above the rest line before classifying (live clips can
+        include resting hands that dataset clips never show). mirror_average: average the scores of
+        the sign and its mirror image."""
+        self.rest_trim = rest_trim
+        self.mirror_average = mirror_average
         models_dir = Path(models_dir)
         gru, logreg = models_dir / "sign_gru.pt", models_dir / "sign_logreg.joblib"
         if gru.exists():
@@ -114,11 +119,39 @@ class SignRecognizer:
 
     def top(self, frames, k=5):
         """Raw frames of one sign -> [(word, probability), ...] best first."""
-        seq = sequence(frames)[None]
+        if self.rest_trim:
+            frames = rest_trimmed(frames)
+        seqs = [sequence(frames)]
+        if self.mirror_average:
+            seqs.append(mirror_sequence(seqs[0]))
+        batch = np.stack(seqs)
         flat_model = self.name != "GRU"
-        proba = self.model.predict_proba(seq.reshape(1, -1) if flat_model else seq)[0]
+        proba = self.model.predict_proba(batch.reshape(len(batch), -1) if flat_model else batch).mean(axis=0)
         best = np.argsort(-proba)[:k]
         return [(display_name(self.classes[i]), float(proba[i])) for i in best]
+
+
+def rest_trimmed(frames, margin=2):
+    """Keep only the stretch where a hand is above the rest line (plus `margin` frames each side).
+    Dataset clips show hands only while signing; live clips can also show them resting in a lap."""
+    frames = np.asarray(frames)
+    idx = np.flatnonzero([is_signing(None if np.isnan(r[0]) else r) for r in frames])
+    if len(idx) == 0:
+        return frames
+    return frames[max(0, idx[0] - margin):idx[-1] + 1 + margin]
+
+
+# Signers in ASL Citizen sit close to their webcam: shoulder width is 0.46-0.65 of the frame height for
+# 90% of videos (median 0.56). Much smaller and the hands get too small for reliable finger landmarks,
+# which shows up as confusing signs made in the same place with different handshapes.
+MIN_SHOULDER_WIDTH = 0.40
+
+
+def shoulder_width(row):
+    """Shoulder width in frame heights (raw rows store x, y in frame-height units), or None."""
+    if row is None or np.isnan(row[0]):
+        return None
+    return float(np.hypot(row[_C["pose_x11"]] - row[_C["pose_x12"]], row[_C["pose_y11"]] - row[_C["pose_y12"]]))
 
 
 def frame_row(result):

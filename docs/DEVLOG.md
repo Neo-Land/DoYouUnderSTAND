@@ -5,6 +5,30 @@ Experiments on the JoJo pose classifier, newest first. All scores are leave-one-
 
 Paths in entries are as they were on that date; see the 2026-11-05 restructure entry for the mapping.
 
+## 2026-11-05: First live sign test: confusions from signing too far away
+
+**Live test (MacBook webcam, Neo signing).** Mostly worked. Rough or confused: WAIT; WATER read as
+MOTHER; HOW read as LOVE (not the other way); SICK read as LEARN; HURT read as SIGN; POWER often lost.
+
+**Diagnosis.** On the 11 test signers most of these don't happen: WATER → MOTHER 0 of 12 videos,
+SICK → LEARN 0/13, HURT → SIGN 0/12, LOVE → HOW 0/12. HOW → LOVE does (1/11), and POWER (50%) and
+SIGN (58%) are weak signs anyway. The live-only confusions share a pattern: each pair is made in the
+same place with a different handshape (WATER / MOTHER at the chin: W vs open 5; SICK / LEARN at the
+forehead; HURT / SIGN with index fingers). So location came through and finger detail didn't.
+Measured cause: ASL Citizen signers sit close to the camera, with shoulder width 0.46–0.65 of the
+frame height (median 0.56); in the JoJo webcam session it is 0.18. At JoJo distance the hands are a
+third of the size the model learned from, and finger landmarks get noisy.
+
+**Changes** (`dyu/sign_live.py`, `app.py`):
+- Sign mode shows "Move closer" while shoulder width is below 0.40 of the frame height.
+- Live signs are trimmed to the frames with a hand above the rest line before classifying (live
+  clips can include resting hands, dataset clips don't).
+- Scores are averaged over the sign and its mirror image.
+
+On the test signers (`eval_live.py`, toggling each): both changes are neutral there, as expected
+since dataset clips have neither problem: 83.9% top-1 without either, 83.7% with only one, 84.1% with
+both (top-5 96.2–96.4%). They're kept for live use. 2 new tests. To re-test live, at a closer distance.
+
 ## 2026-11-05: ASL GRU sequence model and live sign mode
 
 **GRU** (`dyu/sign_model.py`, `scripts/signs/train.py --model gru`). Per frame: linear 110 → 128 +

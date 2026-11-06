@@ -17,7 +17,7 @@ The name is a pun on both: do you *understand* (ASL), do you have a *Stand* (JoJ
 | JoJo poses, live logic | replaying every clip through the app | **0 false summons** during normal movement; 24/24 pose clips summon (median 1.8 s) |
 | JoJo poses, speed | 1280×720 webcam frame, desktop CPU | **~20 fps** |
 | ASL word signs | 100-sign subset of ASL Citizen, 11 test signers never seen in training | **84.4% top-1, 97.1% top-5** with a GRU (chance 1%; baseline 70.1%) |
-| ASL, live pipeline | signs found and cut out of the stream by the app | sign detected in 98.7% of test videos; 83.9% top-1 |
+| ASL, live pipeline | signs found and cut out of the stream by the app | sign detected in 98.7% of test videos; 84.1% top-1 |
 
 The ASL numbers are on a 100-sign subset, so they are not comparable with published results on ASL Citizen's full 2,731-sign vocabulary (about 62% top-1 for the dataset authors' baselines). Details, design choices and how each number was measured: [docs/poses.md](docs/poses.md) and [docs/signs.md](docs/signs.md). Every experiment, with before and after numbers: [docs/DEVLOG.md](docs/DEVLOG.md).
 

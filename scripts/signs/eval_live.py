@@ -42,11 +42,15 @@ def replay(frames, fps):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--split", default="test", choices=["train", "val", "test"])
+    ap.add_argument("--no-rest-trim", action="store_true", help="classify the whole cut-out sign")
+    ap.add_argument("--no-mirror-average", action="store_true", help="score the sign only as signed")
+    ap.add_argument("--out", default="live.json", help="report file name in reports/signs/")
     args = ap.parse_args()
 
     cfg = load_config()["signs"]
     data = resolve(cfg["landmarks_dir"])
-    recognizer = SignRecognizer(resolve(cfg["models_dir"]))
+    recognizer = SignRecognizer(resolve(cfg["models_dir"]), rest_trim=not args.no_rest_trim,
+                                mirror_average=not args.no_mirror_average)
     index = pd.read_csv(data / "index.csv")
     index = index[index.split == args.split]
     print(f"{recognizer.name} model; {len(index)} {args.split} videos, {index.participant.nunique()} signers")
@@ -66,6 +70,7 @@ def main():
     res = pd.DataFrame(rows)
 
     report = {"model": recognizer.name, "split": args.split, "videos": len(res),
+              "rest_trim": recognizer.rest_trim, "mirror_average": recognizer.mirror_average,
               "detected": float(res.detected.mean()), "more_than_one_segment": float((res.segments > 1).mean()),
               "top1": float(res.top1.mean()), "top5": float(res.top5.mean()),
               "top1_when_detected": float(res[res.detected].top1.mean())}
@@ -73,10 +78,10 @@ def main():
           f"(split into more than one sign: {report['more_than_one_segment']:.1%})")
     print(f"  live top-1 {report['top1']:.1%}  top-5 {report['top5']:.1%}  "
           f"(top-1 when detected: {report['top1_when_detected']:.1%})")
-    out = resolve(cfg["reports_dir"]) / "live.json"
+    out = resolve(cfg["reports_dir"]) / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2))
-    print(f"Saved {out.relative_to(ROOT)}")
+    print(f"Saved {out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}")
 
 
 if __name__ == "__main__":
