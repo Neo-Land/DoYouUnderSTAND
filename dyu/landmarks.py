@@ -97,6 +97,7 @@ class Detector:
         # The segmenter runs on a square crop around the body (see _person_mask): on a whole
         # 1280x720 frame it took ~85 ms and mostly missed a full-body person.
         self.segmenter = None
+        self.mask_enabled = segmentation   # the app turns this off in modes that don't draw a Stand
         if segmentation:
             seg_opts = vision.ImageSegmenterOptions(
                 base_options=mp_python.BaseOptions(model_asset_path=str(paths["segmenter"])),
@@ -167,7 +168,7 @@ class Detector:
                 out.pose_px = np.array([[lm.x * w, lm.y * h] for lm in lms], dtype=np.float32)
                 out.left_hand, out.right_hand = assign_hands(pose[:, :2], hands_hu)
                 mask_job = (self._pool.submit(self._person_mask, rgb, out.pose_px, ts)
-                            if self.segmenter is not None else None)
+                            if self.segmenter is not None and self.mask_enabled else None)
                 self._recover_missing_hands(rgb, out)
                 if mask_job is not None:
                     out.mask = mask_job.result()

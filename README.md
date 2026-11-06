@@ -15,7 +15,7 @@ The name is a pun on both: do you *understand* (ASL), do you have a *Stand* (JoJ
   <img src="docs/figures/asl_demo.gif" alt="Live ASL mode on a MacBook webcam: the signer signs THANK YOU, HAPPY and LOVE; after each sign the top 5 guesses appear on the right and the word is added to the transcript at the bottom" width="560">
 </p>
 
-Live ASL mode on a MacBook webcam (`python app.py --mode signs`): sign a word, lower your hands, and the top 5 guesses appear. In the full 32-second take, all 7 signs (HELLO, BYE, THANK YOU, HAPPY, LOVE, MOTHER, WATER) came out on top. The model never saw this signer during training.
+Live ASL mode on a MacBook webcam: sign a word, lower your hands, and the top 5 guesses appear. In the full 32-second take, all 7 signs (HELLO, BYE, THANK YOU, HAPPY, LOVE, MOTHER, WATER) came out on top. The model never saw this signer during training.
 
 ## How it works
 
@@ -69,17 +69,23 @@ The JoJo app needs a trained pose model, and the training clips aren't in the re
 ```powershell
 python scripts/poses/extract_landmarks.py   # clips -> data/landmarks.csv
 python scripts/poses/train.py               # -> models/pose_classifier.joblib, reports/poses/
-python app.py                               # webcam; --video <clip> to play a recording, --debug for the skeleton
+python app.py                               # start menu; --video <clip> to play a recording, --debug for the skeleton
 ```
 
-Hold a pose for about 1.5 s to summon its Stand; raise both arms in a "Y" for about 1 s to dismiss it. MediaPipe's model files (~30 MB) download into `models/` on the first run.
+The app opens on a start menu with three modes:
 
-ASL mode: `python app.py --mode signs` (needs a sign model trained on ASL Citizen, see [docs/signs.md](docs/signs.md#reproducing)). Sign one word with your hands raised, lower them, and the top 5 guesses appear.
+| Key | Mode | What you do |
+| --- | --- | --- |
+| `j` | **JoJo poses** | Hold a pose for about 1.5 s to summon its Stand; raise both arms in a "Y" for about 1 s to dismiss it. |
+| `a` | **ASL signs** | Sign one word with your hands raised, lower them, and the top 5 guesses appear. |
+| `p` | **Learn ASL** | The app names a word, you sign it, and it grades you: green if it's the top guess, yellow if it's in the top 5. Easiest words come first. |
+
+`m` returns to the menu from any mode, `Tab` switches modes, `d` shows the skeleton, `q` quits. `python app.py --mode signs` (or `poses`, `practice`) skips the menu. The ASL modes need a sign model trained on ASL Citizen ([docs/signs.md](docs/signs.md#reproducing)). MediaPipe's model files (~30 MB) download into `models/` on the first run.
 
 ## Project structure
 
 ```
-app.py                      live demo: --mode poses (JoJo, default) or --mode signs (ASL)
+app.py                      the live app: start menu, then JoJo / ASL signs / Learn ASL
 config.yaml                 every setting: camera, extraction, recognition, effects, Stands, ASL signs
 dyu/                        the shared library (see dyu/__init__.py for a module map)
   landmarks.py              MediaPipe wrapper: body + hands per frame, wrist-crop fallback, person mask
@@ -91,6 +97,9 @@ dyu/                        the shared library (see dyu/__init__.py for a module
   signs.py                  ASL sign features: body-relative hands, trimming, resampling
   sign_model.py             ASL GRU sequence classifier (PyTorch)
   sign_live.py              ASL live mode: cut the stream into signs, classify each
+  modes.py                  the app's screens: menu, JoJo, ASL signs, Learn ASL (one class each)
+  practice.py               Learn ASL scoring: targets easiest first, grading, streaks
+  ui.py                     drawing helpers shared by the screens
   clips.py, config.py       clip-name parsing, config loading
 scripts/
   poses/                    extract_landmarks, train, eval_live, tune_smoothing, render_stand_previews
@@ -122,5 +131,6 @@ Both run in GitHub Actions on every push. Each script starts with a docstring ex
 - [x] ASL word signs: landmarks for 100 signs, baseline at 70.1% top-1 on unseen signers
 - [x] ASL: a GRU sequence model: 84.4% top-1 / 97.1% top-5 on unseen signers
 - [x] ASL: a live word-sign mode in the app with top-5 predictions
+- [x] A start menu and a Learn ASL practice mode
 - [ ] ASL: a larger vocabulary
 - [ ] A short demo video

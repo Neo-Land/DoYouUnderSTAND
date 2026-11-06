@@ -5,6 +5,31 @@ Experiments on the JoJo pose classifier, newest first. All scores are leave-one-
 
 Paths in entries are as they were on that date; see the 2026-11-05 restructure entry for the mapping.
 
+## 2026-11-06: Start menu and a Learn ASL practice mode
+
+Branch `feature/mode-menu-practice`. Goal: one app instead of command-line flags, and a practice
+mode that turns the sign recognizer into something a learner can use.
+
+- **Structure.** `app.py` is now only the camera loop and mode switching. Each screen is a class in
+  `dyu/modes.py` with the same interface (`enter`, `process`, `on_key`, `hints`, `needs_mask`):
+  `MenuMode`, `PosesMode`, `SignsMode`, `PracticeMode`. Models load the first time a mode needs them
+  (`AppContext`), so the menu opens instantly and a missing sign model only disables the ASL modes
+  (the menu says why). The person mask, ~13 ms a frame, now only runs in JoJo mode.
+- **Keys.** Menu: `j` JoJo, `a` ASL signs, `p` Learn ASL. Anywhere: `m` menu, `Tab` next mode, `d`
+  skeleton, `q` quit. JoJo's mute moved from `m` to `s`. `--mode menu|poses|signs|practice` picks the
+  starting screen.
+- **Learn ASL** (`dyu/practice.py`). Shows a target word; each sign the segmenter cuts out is graded:
+  correct (top guess), close (in the top 5, with its rank) or wrong (shows the top guess), with score,
+  streak and best streak; a correct sign advances after 1.8 s, `n` skips. Words are ordered easiest
+  first by the GRU's per-sign test accuracy. No dataset videos are shown (license); the screen points
+  to Lifeprint and HandSpeak.
+- **Checks.** 9 new tests (51 total): grading, streaks, ordering, wrap-around, mode switching and
+  the no-model fallback. Every mode was run headless on recorded clips and screenshotted: on Neo's
+  ASL demo recording, practice graded HELLO (89%) and THANK YOU correct and advanced on its own.
+- **Fixed in passing:** the dark outline under on-screen text was drawn with a thicker stroke, which
+  OpenCV spaces wider, so the last letters of each line showed a ghost copy. The outline is now the
+  same text drawn at small offsets.
+
 ## 2026-11-05: First live sign test: confusions from signing too far away
 
 **Live test (MacBook webcam, Neo signing).** Mostly worked. Rough or confused: WAIT; WATER read as

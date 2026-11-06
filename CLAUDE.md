@@ -24,7 +24,7 @@ team, summer 2027). The ASL mode is the part most relevant to the role, so it sh
   import it directly. Shared logic lives in `dyu/`; scripts are thin command-line wrappers.
 
 ## Layout
-- `app.py`            — live demo: `--mode poses` (JoJo, default) or `--mode signs` (ASL)
+- `app.py`            — the live app: camera loop + mode switching (menu, poses, signs, practice)
 - `config.yaml`       — every setting: camera, extraction, recognition, effects, Stands, `signs:`
 - `dyu/`              — library; `dyu/__init__.py` has the module map
   - `landmarks.py` Detector (MediaPipe, wrist-crop fallback, person mask on a body crop, thread pool)
@@ -32,6 +32,7 @@ team, summer 2027). The ASL mode is the part most relevant to the role, so it sh
   - `smoothing.py` hold-to-summon / dismiss · `live_eval.py` replay clips through the live logic
   - `effects.py` Stand rendering · `clips.py`, `config.py`
   - `signs.py` ASL sign features · `sign_model.py` GRU (torch) · `sign_live.py` live segmentation + recognizer
+  - `modes.py` the app's screens (one class per mode) · `practice.py` Learn ASL scoring · `ui.py` drawing helpers
 - `scripts/poses/`    — extract_landmarks, train, eval_live, tune_smoothing, render_stand_previews
 - `scripts/signs/`    — extract_asl_citizen, extract_landmarks, train (--model logreg|gru), eval_live
 - `tests/`            — pytest unit tests
@@ -47,10 +48,11 @@ Clips are named `<label>_s<session>`: s1–s3 phone, s4 MacBook webcam, s5 dismi
 
 ## Commands (repo root, venv active)
 - Setup: `./setup.ps1` (Windows) or `./setup.sh` (Mac/Linux)
-- JoJo: `python scripts/poses/extract_landmarks.py`, `python scripts/poses/train.py`, `python app.py`
+- App: `python app.py` (menu: j JoJo, a ASL, p Learn ASL; m menu, Tab next mode) or `--mode poses|signs|practice`
+- JoJo: `python scripts/poses/extract_landmarks.py`, `python scripts/poses/train.py`
 - JoJo live metrics / tuning: `python scripts/poses/eval_live.py`, `python scripts/poses/tune_smoothing.py`
 - ASL: `python scripts/signs/extract_asl_citizen.py`, `python scripts/signs/extract_landmarks.py`,
-  `python scripts/signs/train.py --model gru`, `python scripts/signs/eval_live.py`, `python app.py --mode signs`
+  `python scripts/signs/train.py --model gru`, `python scripts/signs/eval_live.py`
 - Checks: `python -m pytest -q` and `python -m ruff check .`
 
 ## Conventions
@@ -59,7 +61,9 @@ Clips are named `<label>_s<session>`: s1–s3 phone, s4 MacBook webcam, s5 dismi
 - Hands are assigned by distance to the pose wrists, not MediaPipe's handedness label. Training adds
   left/right mirrored copies.
 - If a feature layout changes (`dyu/features.py`, `dyu/signs.py`), re-run extraction/training.
-- Shared logic goes in `dyu/`, not in scripts; scripts don't import each other.
+- Shared logic goes in `dyu/`, not in scripts; scripts don't import each other. A new app screen is a
+  new `Mode` subclass in `dyu/modes.py` registered in `app.App`.
+- Recruiters may look at the repo: build features on a branch; merge to `main` only when tested.
 - Keep `ruff check .` and the tests passing. Every script starts with a docstring: what it reads,
   writes, and how to run it.
 - Log every experiment in `docs/DEVLOG.md` (newest first) and keep README / docs results current.

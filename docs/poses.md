@@ -25,12 +25,12 @@ Strike one of six JoJo poses in front of a webcam: hold it for about 1.5 seconds
 ## Running it
 
 ```powershell
-python app.py                                    # webcam
+python app.py --mode poses                       # webcam, straight into JoJo mode (python app.py opens the menu)
 python app.py --video data/videos/jotaro_s1.mp4  # no webcam? play a recorded clip
 python app.py --camera 1 --no-sound --debug      # another camera, muted, skeleton + per-frame guess shown
 ```
 
-Keys: `q` quit, `d` skeleton overlay, `m` mute. With `--debug` the bottom left shows the classifier's guess for the current frame and its confidence, which is the first thing to look at when a pose isn't recognized.
+Keys: `s` sound on/off, `d` skeleton overlay, `m` back to the menu, `Tab` next mode, `q` quit. With `--debug` the bottom left shows the classifier's guess for the current frame and its confidence, which is the first thing to look at when a pose isn't recognized.
 
 - **Stand back** until you're in view at least from head to knees, like the training clips. Otherwise the app shows "Step back" and doesn't classify (see [framing check](#how-it-works)).
 - **On a Mac**, `--camera 1` picks another camera if your iPhone (Continuity Camera) opens instead of the built-in one.

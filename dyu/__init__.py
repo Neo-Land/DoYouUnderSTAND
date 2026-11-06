@@ -13,6 +13,9 @@ Module map (shared code; the command-line tools in scripts/ and app.py are thin 
     signs        ASL: per-frame sign features, trimming to the signing span, resampling, mirroring
     sign_model   ASL: GRU sequence classifier (PyTorch, imported lazily)
     sign_live    ASL: live mode, cutting the stream into signs (SignSegmenter) and classifying them
+    practice     Learn ASL: practice targets (easiest first), grading, score and streaks
+    modes        the app's screens: MenuMode, PosesMode, SignsMode, PracticeMode
+    ui           drawing helpers shared by the screens
 
 Importing the package itself loads nothing heavy; MediaPipe and OpenCV are only imported by the
 modules that need them, so the unit tests run without MediaPipe installed.
