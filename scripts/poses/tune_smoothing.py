@@ -1,12 +1,12 @@
-"""Grid-search the live recognition settings on held-out predictions.
+"""JoJo tuning: grid-search the live recognition settings on held-out predictions.
 
 Usage:
-    python scripts/tune_smoothing.py                  # needs data/live_frames.csv (run eval_live.py once)
-    python scripts/tune_smoothing.py --hold 1.0 1.5   # narrow or widen any axis
+    python scripts/poses/tune_smoothing.py                  # needs data/live_frames.csv (run scripts/poses/eval_live.py once)
+    python scripts/poses/tune_smoothing.py --hold 1.0 1.5   # narrow or widen any axis
 
 For every combination of the smoother's threshold / window / vote share / hold_seconds, it replays the
 cached frames of all clips (each session scored by a model trained on the other sessions, using the
-model scripts/train.py picked) and reports:
+model scripts/poses/train.py picked) and reports:
   none_summons  false summons during normal movement (none clips)                     lower = better
   none_false    share of normal-movement time a Stand is showing                       lower = better
   pose_on       share of the held pose where the correct Stand is showing (pose clips)  higher = better
@@ -17,16 +17,12 @@ Settings are picked on the same clips they're scored on, so expect live numbers 
 """
 import argparse
 import itertools
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pandas as pd
 
-import pandas as pd  # noqa: E402
-
-import eval_live as E  # noqa: E402
-from dyu.config import load_config, resolve  # noqa: E402
+from dyu import live_eval as E
+from dyu.config import load_config, resolve
+from dyu.pose_model import best_model_name
 
 
 def main():
@@ -38,11 +34,11 @@ def main():
     ap.add_argument("--vote-share", type=float, nargs="+", default=[0.6, 0.7, 0.8, 0.9])
     ap.add_argument("--hold", type=float, nargs="+", default=[1.0, 1.5, 2.0])
     ap.add_argument("--max-trigger", type=float, default=3.0, help="drop settings slower than this (s)")
-    ap.add_argument("--out", default="reports/smoothing_grid.csv")
+    ap.add_argument("--out", default="reports/poses/smoothing_grid.csv")
     args = ap.parse_args()
 
     frames = E.load_frames(cfg).reset_index(drop=True)
-    model = E.best_model(cfg)
+    model = best_model_name(cfg)
     probs, classes = E.holdout_probs(pd.read_csv(resolve(ex["output_csv"])), frames, model)
     print(f"model: {model}")
     rows = []

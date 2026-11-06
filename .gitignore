@@ -2,6 +2,8 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+*.egg-info/
+build/
 .venv/
 venv/
 
@@ -30,4 +32,4 @@ Thumbs.db
 .idea/
 
 # Stand preview renders contain the (copyrighted) Stand art
-reports/stand_previews/
+reports/poses/stand_previews/

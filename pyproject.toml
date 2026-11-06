@@ -1,0 +1,30 @@
+[project]
+name = "dyu"
+version = "0.2.0"
+description = "Do You UnderSTAND: JoJo pose recognition that summons Stands, and ASL word-sign recognition, from MediaPipe landmarks"
+requires-python = ">=3.11,<3.12"
+# Runtime dependencies are pinned in requirements.txt (installed by setup.ps1 / setup.sh).
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["dyu"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]   # tests import dyu without installing it
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["datasets", "data", "models"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]   # pycodestyle, pyflakes, isort, bugbear
+ignore = ["E501"]                    # long lines: wrapped by hand where it reads better
+
+[tool.ruff.lint.isort]
+known-first-party = ["dyu"]

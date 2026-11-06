@@ -8,5 +8,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install numpy pyyaml pytest opencv-python-headless pillow
-      - run: pytest -q
+      # Lightweight deps only: the tested modules don't need MediaPipe.
+      - run: pip install numpy pyyaml pytest ruff opencv-python-headless pillow
+      - name: Lint
+        run: ruff check .
+      - name: Unit tests
+        run: pytest -q

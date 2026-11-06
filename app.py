@@ -1,4 +1,4 @@
-"""Step 3: strike a pose, summon your Stand.
+"""The live demo: strike a JoJo pose, summon your Stand.
 
 Usage:
     python app.py                         # webcam
@@ -42,11 +42,11 @@ def open_capture(args, cam_cfg):
 def load_model(path):
     p = resolve(path)
     if not p.exists():
-        print(f"No trained model at {p}. Showing landmarks only (run scripts/train.py first).")
+        print(f"No trained model at {p}. Showing landmarks only (run scripts/poses/train.py first).")
         return None
     bundle = joblib.load(p)
     if bundle.get("feature_dim") != FEATURE_DIM:
-        sys.exit("The saved model was trained with different features. Re-run scripts/train.py.")
+        sys.exit("The saved model was trained with different features. Re-run scripts/poses/train.py.")
     print(f"Loaded {bundle['model_name']} model: {', '.join(bundle['labels'])}")
     return bundle
 

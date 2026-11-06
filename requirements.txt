@@ -8,5 +8,6 @@ joblib>=1.3
 Pillow>=10.1
 pygame>=2.5
 PyYAML>=6.0
+# development
 pytest>=8.0
-kaggle>=1.6         # asl/download_asl.py only
+ruff>=0.6

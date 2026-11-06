@@ -1,11 +1,7 @@
-import sys
-from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from dyu.features import FRAMING_POINTS, L_HIP, L_KNEE, L_SHOULDER, N_POSE, body_in_frame  # noqa: E402
+from dyu.features import FRAMING_POINTS, L_HIP, L_KNEE, L_SHOULDER, N_POSE, body_in_frame
 
 ASPECT = 16 / 9  # landscape webcam: x runs 0..1.78 in frame-height units, y runs 0..1
 

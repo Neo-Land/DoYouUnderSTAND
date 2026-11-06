@@ -16,11 +16,11 @@ extraction:
 
 training:
   model_path: models/pose_classifier.joblib
-  reports_dir: reports
+  reports_dir: reports/poses
 
 # Hold a pose to summon its Stand; it stays until you hold the dismiss pose (arms up in a Y).
 # A pose "wins" while it has min_votes of the last `window` frames (frames below `threshold`
-# confidence vote "none"). Tune with scripts/eval_live.py + scripts/tune_smoothing.py.
+# confidence vote "none"). Tune with scripts/poses/eval_live.py + scripts/poses/tune_smoothing.py.
 recognition:
   threshold: 0.4        # minimum confidence for a frame to vote for its pose
   window: 15            # frames in the voting window (~0.5 s at 30 fps)
@@ -100,3 +100,27 @@ stands:
     scale: 3.0        # waist-up image
     offset_x: 0.5
     offset_y: -0.4
+
+# ------------------------------------------------------------------ ASL word signs (ASL Citizen)
+# Microsoft Research license: non-commercial research only. The videos, landmarks and models made
+# from them stay in datasets/, data/ and models/ (all git-ignored). Only code and numbers are public.
+signs:
+  dataset_zip: datasets/asl_citizen/ASL_Citizen.zip   # the full download (~46 GB)
+  dataset_dir: datasets/asl_citizen                   # where the chosen signs' videos are unpacked
+  landmarks_dir: data/asl_signs                       # per-video landmarks + index.csv
+  model_path: models/sign_classifier.joblib
+  reports_dir: reports/signs
+  # 100 everyday signs, as ASL Citizen glosses. A trailing digit picks one of several signs for the
+  # same English word (the variant with the most videos). Edit, then re-run scripts/signs/*.py.
+  vocabulary: [   # quoted: bare YES / NO would be read as booleans by YAML
+    "HELLO", "BYE", "THANKYOU", "PLEASE", "SORRY", "YES", "NO", "HELP", "WANT1", "NEED",
+    "LIKE", "LOVE", "GOOD", "BAD", "HAPPY", "SAD", "ANGRY", "TIRED", "HUNGRY", "EAT1",
+    "DRINK1", "WATER", "MORE", "FINISH", "STOP", "GO", "COME", "WAIT", "WORK", "SCHOOL",
+    "HOME", "FAMILY", "MOTHER", "FATHER", "FRIEND", "NAME", "WHAT1", "WHO", "WHERE", "WHEN",
+    "WHY", "HOW1", "UNDERSTAND", "KNOW", "THINK", "LEARN", "SIGN", "DEAF1", "HEARING", "TEACHER",
+    "STUDENT", "BOOK", "COMPUTER", "PHONE", "TIME", "DAY", "NIGHT1", "TODAY", "TOMORROW", "YESTERDAY",
+    "MORNING", "NOW", "LATER", "AGAIN", "DIFFERENT", "NICE", "MEET", "FINE1", "OK", "BATHROOM",
+    "HOT", "COLD", "RED", "BLUE", "GREEN", "DOG1", "BIRD", "APPLE", "MILK2", "COFFEE",
+    "CAR", "BUS", "MONEY2", "BUY", "PLAY", "MUSIC", "MOVIE1", "DANCE", "SLEEP", "SICK",
+    "HURT", "DOCTOR2", "READY", "NOT", "WORKOUT", "FIGHT", "STAND1", "POWER", "STRONG", "WIN"
+  ]

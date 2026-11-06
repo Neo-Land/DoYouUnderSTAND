@@ -1,30 +1,37 @@
-"""Extract only the ASL Citizen videos for config.ASL_WORD_SIGNS from the full zip (~46 GB).
+"""ASL step 0: unpack only the videos of the chosen signs from the full ASL Citizen zip (~46 GB).
 
+Usage:
+    python scripts/signs/extract_asl_citizen.py
+
+The signs are `signs.vocabulary` in config.yaml; paths are under `signs:` too.
 Expects datasets/asl_citizen/ASL_Citizen.zip. Writes:
   datasets/asl_citizen/ASL_Citizen/splits/*.csv       (full splits, small)
   datasets/asl_citizen/ASL_Citizen/videos/*.mp4       (chosen signs only, ~2 GB for 100 signs)
   datasets/asl_citizen/subset.csv                     (split, participant, file, gloss for those videos)
 
-Safe to re-run: videos already on disk with the right size are skipped. Change ASL_WORD_SIGNS and
+Safe to re-run: videos already on disk with the right size are skipped. Edit the vocabulary and
 re-run to add signs. License: non-commercial research only, nothing here may be committed.
 """
+import argparse
 import csv
 import io
 import sys
 import zipfile
 
-import config
+from dyu.config import load_config, resolve
 
 PREFIX = "ASL_Citizen/"
 SPLITS = ("train", "val", "test")
 
 
 def main():
-    zpath = config.ASL_CITIZEN_ZIP
+    argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter).parse_args()
+    cfg = load_config()["signs"]
+    zpath = resolve(cfg["dataset_zip"])
     if not zpath.exists():
         sys.exit(f"Not found: {zpath}\nDownload ASL Citizen and put the zip there.")
-    out = config.ASL_CITIZEN_DIR
-    wanted = set(config.ASL_WORD_SIGNS)
+    out = resolve(cfg["dataset_dir"])
+    wanted = set(cfg["vocabulary"])
 
     with zipfile.ZipFile(zpath) as z:
         rows = []

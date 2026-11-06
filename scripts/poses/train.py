@@ -1,7 +1,7 @@
-"""Step 2: train the pose classifier and measure it honestly.
+"""JoJo step 2: train the pose classifier and measure it honestly.
 
 Usage:
-    python scripts/train.py
+    python scripts/poses/train.py
 
 Evaluation is leave-one-session-out: train on sessions s1+s2, test on s3, and so on.
 Frames from one clip are near-duplicates, so a random split would let the model
@@ -10,47 +10,24 @@ measures how well it handles a new day, new clothes, new lighting.
 """
 import argparse
 import json
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-import joblib  # noqa: E402
-import matplotlib  # noqa: E402
+import joblib
+import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
-from sklearn.ensemble import RandomForestClassifier  # noqa: E402
-from sklearn.linear_model import LogisticRegression  # noqa: E402
-from sklearn.metrics import (  # noqa: E402
-    ConfusionMatrixDisplay, accuracy_score, classification_report, f1_score,
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    accuracy_score,
+    classification_report,
+    f1_score,
 )
-from sklearn.pipeline import make_pipeline  # noqa: E402
-from sklearn.preprocessing import StandardScaler  # noqa: E402
 
-from dyu.config import load_config, resolve  # noqa: E402
-from dyu.features import FEATURE_DIM, RAW_COLUMNS, featurize, flip_raw, row_to_raw  # noqa: E402
-
-FEATURE_VERSION = 1
-
-
-def candidates():
-    return {
-        "logistic_regression": make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000, C=1.0)),
-        "random_forest": RandomForestClassifier(n_estimators=300, n_jobs=-1, random_state=0),
-    }
-
-
-def build_features(df):
-    raw = df[RAW_COLUMNS].to_numpy(dtype=np.float32)
-    X, X_flip = np.empty((len(raw), FEATURE_DIM), np.float32), np.empty((len(raw), FEATURE_DIM), np.float32)
-    for i, row in enumerate(raw):
-        frame = row_to_raw(row)
-        X[i] = featurize(*frame)
-        X_flip[i] = featurize(*flip_raw(*frame))
-    return X, X_flip
+from dyu.config import load_config, resolve
+from dyu.features import FEATURE_DIM
+from dyu.pose_model import FEATURE_VERSION, build_features, candidates
 
 
 def main():

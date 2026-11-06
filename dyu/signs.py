@@ -2,7 +2,7 @@
 
 Input per frame is the same raw row as the JoJo pipeline (dyu.features.RAW_COLUMNS: 33 pose points
 with visibility, plus both hands as 21 x/y points and a present flag), as saved by
-scripts/extract_signs.py. Frames where no body was found are NaN rows.
+scripts/signs/extract_landmarks.py. Frames where no body was found are NaN rows.
 
 Per-frame sign features (FRAME_DIM = 110):
   upper body  11 pose points (nose, eyes, mouth corners, shoulders, elbows, wrists)       22

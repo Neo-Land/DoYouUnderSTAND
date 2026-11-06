@@ -1,25 +1,22 @@
-"""Step 1: turn every training video into rows of landmark coordinates.
+"""JoJo step 1: turn every training video into rows of landmark coordinates.
 
 Usage:
-    python scripts/extract_landmarks.py
-    python scripts/extract_landmarks.py --videos data/videos --out data/landmarks.csv
+    python scripts/poses/extract_landmarks.py
+    python scripts/poses/extract_landmarks.py --videos data/videos --out data/landmarks.csv
 
 Clip names must look like  <pose>_s<session>.<ext>   e.g. jotaro_s1.mp4, none_s2.mov
 """
 import argparse
 import sys
 import time
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import cv2
+import pandas as pd
 
-import cv2  # noqa: E402
-import pandas as pd  # noqa: E402
-
-from dyu.clips import is_video, parse_clip_name  # noqa: E402
-from dyu.config import load_config, resolve  # noqa: E402
-from dyu.features import RAW_COLUMNS, raw_to_row  # noqa: E402
-from dyu.landmarks import Detector  # noqa: E402
+from dyu.clips import is_video, parse_clip_name
+from dyu.config import load_config, resolve
+from dyu.features import RAW_COLUMNS, raw_to_row
+from dyu.landmarks import Detector
 
 META_COLUMNS = ["video", "label", "session", "frame"]
 

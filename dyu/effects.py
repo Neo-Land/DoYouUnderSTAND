@@ -9,7 +9,6 @@ import numpy as np
 from .config import resolve
 from .features import L_HIP, L_SHOULDER, R_HIP, R_SHOULDER
 
-
 # ---------------------------------------------------------------- images
 
 def load_rgba(path):
@@ -115,10 +114,10 @@ class MenacingText:
         font = ImageFont.truetype(self.font_path, size) if self.font_path else ImageFont.load_default(size=size)
         stroke = max(2, size // 12)
         probe = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-        l, t, r, b = probe.textbbox((0, 0), self.char, font=font, stroke_width=stroke)
-        img = Image.new("RGBA", (r - l + 4, b - t + 4), (0, 0, 0, 0))
+        left, top, right, bottom = probe.textbbox((0, 0), self.char, font=font, stroke_width=stroke)
+        img = Image.new("RGBA", (right - left + 4, bottom - top + 4), (0, 0, 0, 0))
         ImageDraw.Draw(img).text(
-            (2 - l, 2 - t), self.char, font=font, fill=self.color + (255,),
+            (2 - left, 2 - top), self.char, font=font, fill=self.color + (255,),
             stroke_width=stroke, stroke_fill=self.outline + (255,),
         )
         rgba = np.array(img)

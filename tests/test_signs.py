@@ -1,13 +1,8 @@
-import sys
-from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from dyu.features import N_POSE, RAW_COLUMNS, raw_to_row  # noqa: E402
-from dyu.signs import (FRAME_DIM, SEQ_LEN, frame_features, mirror_sequence, resample,  # noqa: E402
-                       sequence, signing_span)
+from dyu.features import N_POSE, RAW_COLUMNS, raw_to_row
+from dyu.signs import FRAME_DIM, SEQ_LEN, frame_features, mirror_sequence, resample, sequence, signing_span
 
 rng = np.random.default_rng(1)
 

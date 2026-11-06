@@ -1,16 +1,18 @@
-import sys
-from pathlib import Path
 
 import numpy as np
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from dyu.clips import parse_clip_name  # noqa: E402
-from dyu.features import (  # noqa: E402
-    FEATURE_DIM, RAW_COLUMNS, assign_hands, featurize, flip_raw, raw_to_row, row_to_raw,
+from dyu.clips import parse_clip_name
+from dyu.features import (
+    FEATURE_DIM,
+    RAW_COLUMNS,
+    assign_hands,
+    featurize,
+    flip_raw,
+    raw_to_row,
+    row_to_raw,
 )
-from dyu.smoothing import PoseSmoother  # noqa: E402
+from dyu.smoothing import PoseSmoother
 
 rng = np.random.default_rng(0)
 
@@ -48,26 +50,28 @@ def test_features_ignore_position_and_distance():
 
 def test_flip_twice_is_identity():
     pose, lh, rh = random_frame((True, False))
-    p, l, r = flip_raw(*flip_raw(pose, lh, rh))
-    assert np.allclose(p, pose) and np.allclose(l, lh) and r is None
+    p, left, right = flip_raw(*flip_raw(pose, lh, rh))
+    assert np.allclose(p, pose) and np.allclose(left, lh) and right is None
 
 
 def test_flip_swaps_hands():
     pose, lh, rh = random_frame((True, False))
-    _, l, r = flip_raw(pose, lh, rh)
-    assert l is None and r is not None
+    _, left, right = flip_raw(pose, lh, rh)
+    assert left is None and right is not None
 
 
 def test_assign_hands_by_wrist():
     pose = np.zeros((33, 2), np.float32)
     pose[15] = [0.2, 0.5]  # left wrist
     pose[16] = [0.8, 0.5]  # right wrist
-    near_right = np.full((21, 2), 0.8, np.float32); near_right[0] = [0.79, 0.5]
-    near_left = np.full((21, 2), 0.2, np.float32); near_left[0] = [0.21, 0.5]
-    l, r = assign_hands(pose, [near_right, near_left])
-    assert l is near_left and r is near_right
-    l, r = assign_hands(pose, [near_right])
-    assert l is None and r is near_right
+    near_right = np.full((21, 2), 0.8, np.float32)
+    near_right[0] = [0.79, 0.5]
+    near_left = np.full((21, 2), 0.2, np.float32)
+    near_left[0] = [0.21, 0.5]
+    left, right = assign_hands(pose, [near_right, near_left])
+    assert left is near_left and right is near_right
+    left, right = assign_hands(pose, [near_right])
+    assert left is None and right is near_right
 
 
 @pytest.mark.parametrize("name,expected", [

@@ -1,13 +1,9 @@
-import sys
-from pathlib import Path
 
 import numpy as np
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
 pytest.importorskip("cv2")
-from dyu.effects import fade_bottom  # noqa: E402
+from dyu.effects import fade_bottom
 
 
 def sprite(h=40, w=10, alpha=200):

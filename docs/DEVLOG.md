@@ -3,6 +3,37 @@
 Experiments on the JoJo pose classifier, newest first. All scores are leave-one-session-out
 (3 sessions, 2,735 frames, 7 classes, one person) unless noted.
 
+Paths in entries are as they were on that date; see the 2026-11-05 restructure entry for the mapping.
+
+## 2026-11-05: Repo restructure (no behaviour change)
+
+Cleanup for readability; no model, setting or result changed.
+
+- **Removed** the old `asl/` scaffold (legacy `mp.solutions` fingerspelling app, Kaggle download and
+  import scripts) and `scripts/train_asl.ps1`. None of it ran in the current environment. It's in
+  git history (commit 17af818) if fingerspelling is rebuilt.
+- **Shared code moved into the package.** `dyu/pose_model.py` (classifiers + feature matrices, from
+  `scripts/train.py`) and `dyu/live_eval.py` (replay logic, from `scripts/eval_live.py`), so scripts no
+  longer import each other. `dyu` is installable (`pyproject.toml`), which removed the `sys.path`
+  workarounds from every script and test.
+- **Grouped by mode**, with paths moved as follows:
+
+| Before | After |
+| --- | --- |
+| `scripts/extract_landmarks.py`, `train.py`, `eval_live.py`, `tune_smoothing.py`, `render_stand_previews.py` | `scripts/poses/…` (same names) |
+| `asl/extract_asl_citizen.py` | `scripts/signs/extract_asl_citizen.py` |
+| `scripts/extract_signs.py`, `scripts/train_signs.py` | `scripts/signs/extract_landmarks.py`, `scripts/signs/train.py` |
+| `reports/metrics.json`, `confusion_matrix.png`, `live_eval.csv`, `smoothing_grid.csv` | `reports/poses/…` |
+| `reports/signs_baseline.json`, `signs_baseline_per_sign.csv` | `reports/signs/baseline.json`, `baseline_per_sign.csv` |
+| `asl/config.py` `ASL_WORD_SIGNS` and paths | `config.yaml` `signs:` section |
+| `models/sign_baseline.joblib` | `models/sign_classifier.joblib` |
+
+- **Docs:** README cut to an overview (results at a glance, quick start, structure, licensing);
+  detail moved to `docs/poses.md` and `docs/signs.md`.
+- **Checks:** `ruff` lint added to CI next to pytest; fixed what it found (unused imports, ambiguous
+  names, `zip()` without `strict=`). `setup.ps1` falls back to `python` when the `py` launcher is
+  missing.
+
 ## 2026-11-05: ASL word signs, step 1–2: landmarks and a baseline
 
 **Data.** 100 everyday signs from ASL Citizen (list in `asl/config.py`, videos pulled from the zip

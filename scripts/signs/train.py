@@ -1,39 +1,37 @@
 """ASL step 2: baseline word-sign classifier on ASL Citizen landmarks, signer-independent.
 
 Usage:
-    python scripts/train_signs.py
+    python scripts/signs/train.py
 
-Needs data/asl_signs/ from scripts/extract_signs.py. Uses ASL Citizen's official splits, which put
+Needs data/asl_signs/ from scripts/signs/extract_landmarks.py. Uses ASL Citizen's official splits, which put
 every signer in exactly one of train / val / test, so test accuracy is on people the model has never
 seen. Each video becomes a fixed-length sequence (dyu.signs.sequence), training adds left/right
 mirrored copies, and regularization is picked on the validation signers. The final model is refit on
 train + val and scored once on test.
 
 Writes:
-  reports/signs_baseline.json         top-1 / top-5 on val and test (numbers only: OK to publish)
-  reports/signs_baseline_per_sign.csv test accuracy per sign
-  models/sign_baseline.joblib         the model (trained on ASL Citizen: never publish it)
+  reports/signs/baseline.json           top-1 / top-5 on val and test (numbers only: OK to publish)
+  reports/signs/baseline_per_sign.csv   test accuracy per sign
+  models/sign_classifier.joblib         the model (trained on ASL Citizen: never publish it)
 """
 import json
-import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
-import joblib  # noqa: E402
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
-from sklearn.linear_model import LogisticRegression  # noqa: E402
-from sklearn.pipeline import make_pipeline  # noqa: E402
-from sklearn.preprocessing import StandardScaler  # noqa: E402
+from dyu.config import ROOT, load_config, resolve
+from dyu.signs import SEQ_LEN, mirror_sequence, sequence
 
-from dyu.config import ROOT  # noqa: E402
-from dyu.signs import SEQ_LEN, mirror_sequence, sequence  # noqa: E402
-
-DATA = ROOT / "data" / "asl_signs"
-REPORTS = ROOT / "reports"
-MODEL = ROOT / "models" / "sign_baseline.joblib"
+_CFG = load_config()["signs"]
+DATA = resolve(_CFG["landmarks_dir"])
+REPORTS = resolve(_CFG["reports_dir"])
+MODEL = resolve(_CFG["model_path"])
 
 
 def load():
@@ -46,7 +44,7 @@ def topk(model, X, y, k):
     proba = model.predict_proba(X)
     classes = np.asarray(model.classes_)
     top = classes[np.argsort(-proba, axis=1)[:, :k]]
-    return float(np.mean([t in row for t, row in zip(y, top)]))
+    return float(np.mean([t in row for t, row in zip(y, top, strict=True)]))
 
 
 def fit(X, y, C):
@@ -93,16 +91,16 @@ def main():
     print("\nEasiest:")
     print(per_sign.tail(5).to_string(float_format=lambda v: f"{v:.0%}"))
 
-    REPORTS.mkdir(exist_ok=True)
-    (REPORTS / "signs_baseline.json").write_text(json.dumps({
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    (REPORTS / "baseline.json").write_text(json.dumps({
         "model": "logistic_regression", "C": C, "seq_len": SEQ_LEN, "signs": int(index.gloss.nunique()),
         "videos": {"train": int(tr.sum()), "val": int(va.sum()), "test": int(te.sum())},
         "val": {"top1": val1, "top5": val5}, "test": {"top1": test1, "top5": test5},
     }, indent=2))
-    per_sign.to_csv(REPORTS / "signs_baseline_per_sign.csv")
+    per_sign.to_csv(REPORTS / "baseline_per_sign.csv")
     MODEL.parent.mkdir(exist_ok=True)
     joblib.dump({"model": final, "classes": list(final.classes_), "seq_len": SEQ_LEN}, MODEL)
-    print(f"\nSaved reports/signs_baseline.json and {MODEL.relative_to(ROOT)} ({time.time() - t0:.0f}s)")
+    print(f"\nSaved {(REPORTS / 'baseline.json').relative_to(ROOT)} and {MODEL.relative_to(ROOT)} ({time.time() - t0:.0f}s)")
 
 
 if __name__ == "__main__":

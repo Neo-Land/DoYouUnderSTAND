@@ -1,40 +1,24 @@
-"""Replay the recorded clips through the live app pipeline and measure what a user would see.
+"""Replay recorded clips through the app's live logic: what a user would actually see.
 
-Usage:
-    python scripts/eval_live.py                     # uses cached landmarks if present
-    python scripts/eval_live.py --refresh           # re-run MediaPipe on every frame first
-    python scripts/eval_live.py --clips kira none   # only clips with these labels
+Used by scripts/poses/eval_live.py (report) and scripts/poses/tune_smoothing.py (grid search).
 
-Step 1 (slow, cached): every frame of every clip goes through the app's Detector (with the
-wrist-crop fallback) and the raw landmarks are saved to data/live_frames.csv.
-Step 2 (fast): each clip is scored by a model trained on the OTHER sessions (leave-one-session-out,
-like scripts/train.py), frames failing the app's body_in_frame check are skipped, and the per-frame
-predictions go through PoseSmoother with the config.yaml `recognition` settings, exactly as in app.py.
-
-Reported per clip:
-  frame acc  per-frame classifier accuracy on the held part of the clip (trim_fraction cut off)
-  on-time    share of the held part where the correct Stand is showing (none/dismiss: no Stand)
-  wrong      share of the whole clip where a wrong Stand is showing
-  summons    how many times a wrong Stand was summoned (it then stays until dismissed)
-  trigger    pose clips: seconds until the correct Stand first appears
-             dismiss clips: a Stand is showing at the start; seconds until it is dismissed
+1. load_frames():   every frame of every clip through the app's Detector, cached in data/live_frames.csv
+                    (slow the first time; afterwards only new clips are processed).
+2. holdout_probs(): per-frame class probabilities, each session predicted by a model trained on the
+                    OTHER sessions, with frames failing the app's framing check skipped.
+3. simulate():      the probabilities through PoseSmoother with given `recognition` settings, giving
+                    per-clip metrics; summarize() rolls them up.
 """
-import argparse
-import sys
 import time
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+import numpy as np
+import pandas as pd
 
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
-
-import train  # noqa: E402  (scripts/train.py: same features and candidate models)
-from dyu.clips import is_video, parse_clip_name  # noqa: E402
-from dyu.config import load_config, resolve  # noqa: E402
-from dyu.features import RAW_COLUMNS, body_in_frame, raw_to_row, row_to_raw  # noqa: E402
-from dyu.smoothing import PoseSmoother  # noqa: E402
+from .clips import is_video, parse_clip_name
+from .config import load_config, resolve
+from .features import RAW_COLUMNS, body_in_frame, raw_to_row, row_to_raw
+from .pose_model import build_features, candidates
+from .smoothing import PoseSmoother
 
 CACHE = "data/live_frames.csv"
 META = ["video", "label", "session", "frame", "t", "total", "has_pose", "ms"]
@@ -44,7 +28,8 @@ META = ["video", "label", "session", "frame", "t", "total", "has_pose", "ms"]
 
 def collect_clip(path, label, session, max_height):
     import cv2
-    from dyu.landmarks import Detector
+
+    from .landmarks import Detector
 
     cap = cv2.VideoCapture(str(path))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -106,15 +91,15 @@ def holdout_probs(train_df, frames, model_name="logistic_regression", fit=None):
     """Per-frame class probabilities for `frames`, each session predicted by a model trained on the
     other sessions of `train_df`. Returns (probs array with NaN rows where no body, class list).
     `fit(X, y)` can replace the default training (to try other models)."""
-    X, X_flip = train.build_features(train_df)
+    X, X_flip = build_features(train_df)
     y, sess = train_df["label"].to_numpy(), train_df["session"].to_numpy()
-    F, _ = train.build_features(frames)
+    F, _ = build_features(frames)
     probs, classes = None, None
     for held in sorted(frames.session.unique()):
         tr = sess != held
         Xtr, ytr = np.vstack([X[tr], X_flip[tr]]), np.concatenate([y[tr], y[tr]])
         if fit is None:
-            m = train.candidates()[model_name]
+            m = candidates()[model_name]
             m.fit(Xtr, ytr)
         else:
             m = fit(Xtr, ytr)
@@ -140,7 +125,7 @@ def framed_mask(frames):
         cap.release()
     raw = frames[RAW_COLUMNS].to_numpy(dtype=np.float32)
     return np.array([has and body_in_frame(row_to_raw(r)[0], aspect[v])
-                     for r, v, has in zip(raw, frames.video.to_numpy(), frames.has_pose.to_numpy())])
+                     for r, v, has in zip(raw, frames.video.to_numpy(), frames.has_pose.to_numpy(), strict=True)])
 
 
 # ---------------------------------------------------------------- step 3: smoothing + metrics
@@ -161,7 +146,7 @@ def simulate(frames, probs, classes, rec, trim, smoother_cls=PoseSmoother, dismi
         want = None if label in (sm.none, sm.dismiss) else label
         n = held = held_frame_ok = held_on = wrong = summons = 0
         trigger, prev = None, sm.current
-        for k, (fr, t) in enumerate(zip(clip.frame.to_numpy(), clip.t.to_numpy())):
+        for k, (fr, t) in enumerate(zip(clip.frame.to_numpy(), clip.t.to_numpy(), strict=True)):
             p = probs[idx[k]]
             guess, conf = (None, 0.0) if np.isnan(p[0]) else (classes[int(np.argmax(p))], float(np.max(p)))
             active = sm.update(guess, conf, t)
@@ -221,42 +206,3 @@ def print_report(res):
               f"{s['dismiss_median']:.1f}s; a wrong Stand showed {s['dismiss_false']:.0%} of the time")
     ms = res.ms_per_frame.median()
     print(f"  speed: median {ms:.0f} ms/frame (~{1000 / ms:.0f} fps for detection, mask off)")
-
-
-def best_model(cfg):
-    """The model scripts/train.py picked (reports/metrics.json), so replays match what the app runs."""
-    import json
-
-    path = resolve(cfg["training"]["reports_dir"]) / "metrics.json"
-    try:
-        return json.loads(path.read_text())["best"]
-    except (OSError, KeyError, ValueError):
-        return "logistic_regression"
-
-
-def main():
-    cfg = load_config()
-    ex, rec = cfg["extraction"], cfg["recognition"]
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--data", default=ex["output_csv"], help="landmarks CSV to train the held-out models on")
-    ap.add_argument("--model", default=None, choices=list(train.candidates()),
-                    help="default: the best model in reports/metrics.json")
-    ap.add_argument("--clips", nargs="*", help="only score clips with these labels")
-    ap.add_argument("--refresh", action="store_true", help="re-run MediaPipe instead of using the cache")
-    ap.add_argument("--out", default="reports/live_eval.csv")
-    args = ap.parse_args()
-
-    frames = load_frames(cfg, args.refresh, args.clips).reset_index(drop=True)
-    model = args.model or best_model(cfg)
-    probs, classes = holdout_probs(pd.read_csv(resolve(args.data)), frames, model)
-    res = simulate(frames, probs, classes, rec, ex["trim_fraction"])
-    print(f"model {model}; recognition: " + ", ".join(f"{k} {v}" for k, v in rec.items()))
-    print_report(res)
-    out = resolve(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    res.to_csv(out, index=False)
-    print(f"Saved {out}")
-
-
-if __name__ == "__main__":
-    main()

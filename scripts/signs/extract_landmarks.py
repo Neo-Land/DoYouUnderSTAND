@@ -1,11 +1,11 @@
 """ASL step 1: turn every ASL Citizen video in the sign subset into per-frame landmarks.
 
 Usage:
-    python scripts/extract_signs.py                 # all videos in datasets/asl_citizen/subset.csv
-    python scripts/extract_signs.py --limit 20      # quick test on 20 videos
-    python scripts/extract_signs.py --workers 8
+    python scripts/signs/extract_landmarks.py               # all videos in datasets/asl_citizen/subset.csv
+    python scripts/signs/extract_landmarks.py --limit 20    # quick test on 20 videos
+    python scripts/signs/extract_landmarks.py --workers 8
 
-Needs datasets/asl_citizen/subset.csv and the videos it lists (asl/extract_asl_citizen.py makes both).
+Needs datasets/asl_citizen/subset.csv and the videos it lists (scripts/signs/extract_asl_citizen.py makes both).
 Each video goes through the same MediaPipe Detector as the JoJo app (pose + both hands, with the
 wrist-crop fallback), and its frames are saved as one float32 array of shape (frames, len(RAW_COLUMNS))
 in data/asl_signs/<video>.npy, NaN rows where no body was found. data/asl_signs/index.csv lists every
@@ -21,17 +21,16 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import numpy as np
+import pandas as pd
 
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
+from dyu.config import load_config, resolve
+from dyu.features import RAW_COLUMNS, raw_to_row
 
-from dyu.config import ROOT  # noqa: E402
-from dyu.features import RAW_COLUMNS, raw_to_row  # noqa: E402
-
-SUBSET = ROOT / "datasets" / "asl_citizen" / "subset.csv"
-VIDEOS = ROOT / "datasets" / "asl_citizen" / "ASL_Citizen" / "videos"
-OUT = ROOT / "data" / "asl_signs"
+_CFG = load_config()["signs"]
+SUBSET = resolve(_CFG["dataset_dir"]) / "subset.csv"
+VIDEOS = resolve(_CFG["dataset_dir"]) / "ASL_Citizen" / "videos"
+OUT = resolve(_CFG["landmarks_dir"])
 MAX_HEIGHT = 720
 GAP_MS = 10_000  # timestamp gap between videos, so VIDEO-mode tracking starts fresh on each clip
 
@@ -94,7 +93,7 @@ def main():
     args = ap.parse_args()
 
     if not SUBSET.exists():
-        sys.exit(f"Missing {SUBSET}. Run asl/extract_asl_citizen.py first.")
+        sys.exit(f"Missing {SUBSET}. Run scripts/signs/extract_asl_citizen.py first.")
     subset = pd.read_csv(SUBSET)
     if args.limit:
         subset = subset.sample(args.limit, random_state=0)
